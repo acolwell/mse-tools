@@ -15,7 +15,6 @@
 package main
 
 import (
-	"bytes"
 	"code.google.com/p/go.net/websocket"
 	"fmt"
 	"github.com/acolwell/mse-tools/go/ebml"
@@ -27,53 +26,66 @@ import (
 )
 
 type TestClient struct {
-	haveHdr      bool
-	hdrOffset    int64
-	hdrByteCount int
-	buf          *bytes.Buffer
+	depth int
 }
 
 func (c *TestClient) OnListStart(offset int64, id int) bool {
-	fmt.Printf("OnListStart(%d, %s)\n", offset, webm.IdToName(id))
+	fmt.Printf("%s<%s type=\"list\" offset=\"%d\">\n", c.indent(), webm.IdToName(id), offset)
+	c.depth++
 	return true
 }
 
 func (c *TestClient) OnListEnd(offset int64, id int) bool {
-	fmt.Printf("OnListEnd(%d, %s)\n", offset, webm.IdToName(id))
+	c.depth--
+	fmt.Printf("%s</%s>\n", c.indent(), webm.IdToName(id))
 	return true
 }
 
 func (c *TestClient) OnBinary(id int, value []byte) bool {
-	fmt.Printf("OnBinary(%s, %d)\n", webm.IdToName(id), len(value))
+	if (id != webm.IdSimpleBlock) {
+		fmt.Printf("%s<%s type=\"binary\" size=\"%d\"/>\n", c.indent(), webm.IdToName(id), len(value))
+	} else {
+		blockInfo := webm.ParseSimpleBlock(value);
+		if (blockInfo != nil) {
+			fmt.Printf("%s<%s type=\"binary\" size=\"%d\" trackNum=\"%d\" timecode=\"%d\" flags=\"%x\"/>\n", 
+				c.indent(), webm.IdToName(id), len(value), blockInfo.Id, blockInfo.Timecode, blockInfo.Flags)
+		} else {
+			fmt.Printf("%s<%s type=\"binary\" size=\"%d\" invalid=\"true\"/>\n", c.indent(), webm.IdToName(id), len(value))
+		}
+	}
 	return true
 }
 
 func (c *TestClient) OnInt(id int, value int64) bool {
-	fmt.Printf("OnInt(%s, %d)\n", webm.IdToName(id), value)
+	fmt.Printf("%<%s type=\"int\" value=\"%d\"/>\n", c.indent(), webm.IdToName(id), value)
 	return true
 }
 
 func (c *TestClient) OnUint(id int, value uint64) bool {
 	if id != webm.IdSeekID {
-		fmt.Printf("OnUint(%s, %d)\n", webm.IdToName(id), value)
+		fmt.Printf("%s<%s type=\"uint\" value=\"%d\"/>\n", c.indent(), webm.IdToName(id), value)
 	} else {
-		fmt.Printf("OnUint(%s, %s)\n", webm.IdToName(id), webm.IdToName(int(value)))
+		fmt.Printf("%s<%s type=\"uint\" id_name=\"%s\" value=\"%d\"/>\n", c.indent(), webm.IdToName(id), webm.IdToName(int(value)), value)
 	}
 	return true
 }
 
 func (c *TestClient) OnFloat(id int, value float64) bool {
-	fmt.Printf("OnFloat(%s, %f)\n", webm.IdToName(id), value)
+	fmt.Printf("%s<%s type=\"float\" value=\"%f\"/>\n", c.indent(), webm.IdToName(id), value)
 	return true
 }
 
 func (c *TestClient) OnString(id int, value string) bool {
-	fmt.Printf("OnString(%s, %s)\n", webm.IdToName(id), value)
+	fmt.Printf("%s<%s type=\"string\" value=\"%s\"/>\n", c.indent(), webm.IdToName(id), value)
 	return true
 }
 
+func (c *TestClient) indent() string {
+	return strings.Repeat("  ", c.depth)
+}
+
 func NewTestClient() *TestClient {
-	return &TestClient{haveHdr: false, hdrOffset: 0, hdrByteCount: 0, buf: bytes.NewBuffer([]byte{})}
+	return &TestClient{depth: 0}
 }
 
 func checkError(str string, err error) {
