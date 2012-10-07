@@ -19,6 +19,9 @@ SOURCES=\
 	src/mse-decl.js \
 	src/msetools.js \
 	src/file.js \
+	src/element_list_parser.js \
+	src/webm_validator.js \
+	src/isobmff_validator.js \
 	src/validator.js \
 	src/outro.js \
 

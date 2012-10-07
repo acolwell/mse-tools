@@ -17,6 +17,9 @@
   var nameOfThisFile = 'msetools-dev.js';
   var files = [
     'file.js',
+    'element_list_parser.js',
+    'webm_validator.js',
+    'isobmff_validator.js',
     'validator.js'
   ];
 

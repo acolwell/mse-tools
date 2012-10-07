@@ -33,6 +33,24 @@
     this.id_ = id;
     this.type_ = type;
     this.sourceBuffer_ = sourceBuffer;
+    this.bytestreamValidator_ = null;
+
+    var typeInfo = this.parseType_(type);
+
+    if (typeInfo != null) {
+      if (typeInfo.minor == 'webm') {
+        this.bytestreamValidator_ = new msetools.WebMValidator();
+      } else if (typeInfo.minor == 'mp4') {
+        this.bytestreamValidator_ = new msetools.ISOBMFFValidator();
+      }
+    }
+
+    if (this.bytestreamValidator_) {
+      this.bytestreamValidator_.init(typeInfo);
+    } else {
+      console.log(id + ': Unsupported type \'' + type + '\'. ' +
+                  ' Validation for this SourceBuffer disabled.');
+    }
 
     var appendFunc = this.sourceBuffer_.append.bind(
       this.sourceBuffer_);
@@ -49,7 +67,16 @@
    * @param {Uint8Array} data
    */
   SourceBufferValidator.prototype.append = function(originalMethod, data) {
-    console.log(this.id_ + ': SourceBuffer.append(' + data.length + ')');
+    //console.log(this.id_ + ': SourceBuffer.append(' + data.length + ')');
+
+    if (this.bytestreamValidator_) {
+      var errors = this.parse_(data);
+      
+      for (var i = 0; i < errors.length; ++i) {
+        console.log(errors[i]);
+      }
+    }
+
     try {
       originalMethod(data);
     } catch (e) {
@@ -63,6 +90,10 @@
   SourceBufferValidator.prototype.abort = function(originalMethod) {
     console.log(this.id_ + ': SourceBuffer.abort()');
 
+    if (this.bytestreamValidator_) {
+      this.bytestreamValidator_.abort();
+    }
+
     try {
       originalMethod();
     } catch (e) {
@@ -74,7 +105,75 @@
    * @param {MediaSource.EndOfStreamError=} error
    */
   SourceBufferValidator.prototype.endOfStream = function(error) {
+    if (this.bytestreamValidator_) {
+      this.bytestreamValidator_.endOfStream();
+    }
   }
+
+  SourceBufferValidator.prototype.parseType_ = function(type) {
+    var trimmedType = type.replace(' ', '');
+    if ((trimmedType.indexOf(';') < 0) ||
+        (trimmedType.indexOf(';') == (type.length - 1)))
+    {
+      console.log('\'' + type + '\' missing codecs.');
+      return null;
+    }
+
+    if (trimmedType.indexOf(';') < 1) {
+      console.log('\'' + type + '\' missing major & minor type.');
+      return null;
+    }
+
+    var sections = trimmedType.split(';');
+    var majorMinor = sections[0].split('/');
+    if ((majorMinor.length != 2) ||
+        (majorMinor[0].length <= 0) ||
+        (majorMinor[1].length <= 0)) {
+      console.log('\'' + type + '\' has invalid type & subtype.');
+      return null;
+    }
+    
+    var majorType = majorMinor[0].toLowerCase();
+    var minorType = majorMinor[1].toLowerCase();
+    if ((majorType != 'video') && (majorType != 'audio')) {
+      console.log('\'' + type + '\' has unsupported major type \'' +
+                  majorType + '\'.');
+      return null;
+    }
+
+    var codecs = [];
+    for (var i = 1; i < sections.length; ++i) {
+      var param = sections[i];
+      if (param.indexOf('codecs=') != 0) {
+        continue;
+      }
+
+      param = param.replace('codecs=', '');
+      if (param[0] != '"' || param[param.length - 1] != '"') {
+        console.log('\'' + type + '\' has codec parameter doesn\'t have \'"\'s.');
+        return null;
+      }
+
+      codecs = param.substring(1, param.length - 1).split(',');
+      for (var i = 0; i < codecs.length; ++i) {
+        if (codecs[i].length == 0) {
+          console.log('\'' + type + '\' has codec parameter is invalid.');
+          return null;
+        }
+      }
+    }
+
+    if (codecs.length == 0) {
+      console.log('\'' + type + '\' has no codecs specified.');
+      return null;
+    }
+
+    return { major: majorType, minor: minorType, codecs: codecs };
+  }
+
+  SourceBufferValidator.prototype.parse_ = function(data) {
+    return this.bytestreamValidator_.parse(data);
+  };
 
   /**
    * @constructor
@@ -163,7 +262,8 @@
    * @param {MediaSource.EndOfStreamError=} error
    */
   MediaSourceValidator.prototype.endOfStream = function(originalMethod, error) {
-    console.log(this.id_ + ': MediaSource.endOfStream(' + error + ')');
+    console.log(this.id_ + ': MediaSource.endOfStream(' + 
+                ((error != undefined) ? error : '') + ')');
 
     try {
       if (error == undefined) {
