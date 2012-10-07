@@ -21,4 +21,3 @@
  * @param {Object=} undefined
  */
 (function(window, undefined) {
-  var msetools = {};

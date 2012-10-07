@@ -17,6 +17,8 @@ CLOSURE_COMPILER_JAR=~/src/closure-compiler/build/compiler.jar
 SOURCES=\
 	src/intro.js \
 	src/mse-decl.js \
+	src/msetools.js \
+	src/file.js \
 	src/validator.js \
 	src/outro.js \
 
@@ -25,7 +27,8 @@ all: dist/msetools-min.js
 dist:
 	mkdir dist
 
-dist/msetools.js: dist
+dist/msetools.js: dist $(SOURCES)
+	rm $@
 	touch $@
 	$(foreach var,$(SOURCES), cat $(var) >> $@;)
 
