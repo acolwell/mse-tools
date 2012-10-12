@@ -12,32 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CLOSURE_COMPILER_JAR=~/src/closure-compiler/build/compiler.jar
-
 SOURCES=\
-	src/intro.js \
 	src/mse-decl.js \
 	src/msetools.js \
 	src/file.js \
 	src/element_list_parser.js \
+	src/bytestream_validator.js \
 	src/webm_validator.js \
 	src/isobmff_validator.js \
 	src/validator.js \
-	src/outro.js \
 
 all: dist/msetools-min.js
+
+clean:
+	rm -rf dist
 
 dist:
 	mkdir dist
 
-dist/msetools.js: dist $(SOURCES)
-	rm $@
-	touch $@
-	$(foreach var,$(SOURCES), cat $(var) >> $@;)
+dist/flags.txt: dist $(SOURCES)
+	rm -f $@
 
-dist/msetools-min.js: dist/msetools.js
+	$(foreach var,$(SOURCES), echo "--js $(var)" >> $@;)
+
+dist/msetools-min.js: dist/flags.txt
 	java -jar $(CLOSURE_COMPILER_JAR) \
 	--compilation_level ADVANCED_OPTIMIZATIONS \
 	--warning_level=VERBOSE \
-	--js_output_file=$@ \
-	--js dist/msetools.js
+	--output_wrapper "(function(window, undefined) {%output%})(window);" \
+	--js_output_file $@ \
+	--flagfile dist/flags.txt
