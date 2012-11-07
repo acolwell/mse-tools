@@ -27,6 +27,7 @@ import (
 
 type TestClient struct {
 	depth int
+	clusterTimecode uint64
 }
 
 func (c *TestClient) OnListStart(offset int64, id int) bool {
@@ -46,9 +47,10 @@ func (c *TestClient) OnBinary(id int, value []byte) bool {
 		fmt.Printf("%s<%s type=\"binary\" size=\"%d\"/>\n", c.indent(), webm.IdToName(id), len(value))
 	} else {
 		blockInfo := webm.ParseSimpleBlock(value);
+		presentationTimecode := int64(c.clusterTimecode) + int64(blockInfo.Timecode)
 		if (blockInfo != nil) {
-			fmt.Printf("%s<%s type=\"binary\" size=\"%d\" trackNum=\"%d\" timecode=\"%d\" flags=\"%x\"/>\n", 
-				c.indent(), webm.IdToName(id), len(value), blockInfo.Id, blockInfo.Timecode, blockInfo.Flags)
+			fmt.Printf("%s<%s type=\"binary\" size=\"%d\" trackNum=\"%d\" timecode=\"%d\" presentationTimecode=\"%d\" flags=\"%x\"/>\n", 
+				c.indent(), webm.IdToName(id), len(value), blockInfo.Id, blockInfo.Timecode, presentationTimecode, blockInfo.Flags)
 		} else {
 			fmt.Printf("%s<%s type=\"binary\" size=\"%d\" invalid=\"true\"/>\n", c.indent(), webm.IdToName(id), len(value))
 		}
@@ -67,6 +69,9 @@ func (c *TestClient) OnUint(id int, value uint64) bool {
 	} else {
 		fmt.Printf("%s<%s type=\"uint\" id_name=\"%s\" value=\"%d\"/>\n", c.indent(), webm.IdToName(id), webm.IdToName(int(value)), value)
 	}
+	if id == webm.IdTimecode {
+	   c.clusterTimecode = value
+	}	   
 	return true
 }
 
