@@ -31,7 +31,7 @@ type webMClient struct {
 	clusterOffset   int64
 	clusterSize     int64
 	clusterTimecode uint64
-	manifest *JSONManifest
+	manifest        *JSONManifest
 }
 
 func (c *webMClient) OnListStart(offset int64, id int) bool {
@@ -61,10 +61,10 @@ func (c *webMClient) OnListEnd(offset int64, id int) bool {
 
 	if id == webm.IdInfo {
 		if c.timecodeScale == 0 {
-			return false
+			c.timecodeScale = 1000000
 		}
 		if c.duration != -1 {
-			c.manifest.Duration = c.duration*scaleMult
+			c.manifest.Duration = c.duration * scaleMult
 		}
 		return true
 	}
@@ -87,9 +87,9 @@ func (c *webMClient) OnListEnd(offset int64, id int) bool {
 
 	if id == webm.IdCluster {
 		c.manifest.Media = append(c.manifest.Media, &MediaSegment{
-			Offset: c.clusterOffset,
-			Size: (offset-c.clusterOffset),
-			Timecode: (float64(c.clusterTimecode)*scaleMult),
+			Offset:   c.clusterOffset,
+			Size:     (offset - c.clusterOffset),
+			Timecode: (float64(c.clusterTimecode) * scaleMult),
 		})
 		return true
 	}
@@ -157,7 +157,7 @@ func newWebMClient() *webMClient {
 		headerSize:      -1,
 		clusterOffset:   -1,
 		clusterTimecode: 0,
-	  manifest: NewJSONManifest(),
+		manifest:        NewJSONManifest(),
 	}
 }
 
