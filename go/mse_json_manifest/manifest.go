@@ -14,53 +14,58 @@
 
 package main
 
-import(
+import (
 	"fmt"
-  "time"
+	"strings"
+	"time"
 )
 
 type InitSegment struct {
 	Offset int64
-	Size int64
+	Size   int64
 }
 
 type MediaSegment struct {
-	Offset int64
-	Size int64
+	Offset   int64
+	Size     int64
 	Timecode float64
 }
 
 type JSONManifest struct {
-	Type string
-	Duration float64
+	Type      string
+	Duration  float64
 	StartDate time.Time
-	Init *InitSegment
-	Media []*MediaSegment
+	Init      *InitSegment
+	Media     []*MediaSegment
 }
 
 func (jm *JSONManifest) ToJSON() string {
 	str := "{\n"
-	str += "  type: '" + jm.Type + "',\n"
+	str += "  \"type\": \"" + strings.Replace(jm.Type, "\"", "\\\"", -1) + "\",\n"
 	if jm.Duration == -1 {
-		str += "  live: true, \n"
+		str += "  \"live\": true, \n"
 	} else {
-		str += fmt.Sprintf("  duration: %f,\n", jm.Duration)
+		str += fmt.Sprintf("  \"duration\": %f,\n", jm.Duration)
 	}
 
-	if (!jm.StartDate.IsZero()) {
-		str += "  startDate: " + jm.StartDate.Format(time.RFC3339Nano) + ", \n"
+	if !jm.StartDate.IsZero() {
+		str += "  \"startDate\": " + jm.StartDate.Format(time.RFC3339Nano) + ", \n"
 	}
 
-	str += fmt.Sprintf("  init: { offset: %d, size: %d},\n",
+	str += fmt.Sprintf("  \"init\": { \"offset\": %d, \"size\": %d},\n",
 		jm.Init.Offset,
 		jm.Init.Size)
-	str += "  media: [\n"
-	for i := range(jm.Media) {
+	str += "  \"media\": [\n"
+	for i := range jm.Media {
 		m := jm.Media[i]
-		str += fmt.Sprintf("    { offset: %d, size: %d, timecode: %f },\n",
+		str += fmt.Sprintf("    { \"offset\": %d, \"size\": %d, \"timecode\": %f }",
 			m.Offset,
 			m.Size,
 			m.Timecode)
+		if i+1 != len(jm.Media) {
+			str += ","
+		}
+		str += "\n"
 	}
 	str += "  ]\n"
 	str += "}\n"
@@ -68,9 +73,9 @@ func (jm *JSONManifest) ToJSON() string {
 }
 
 func NewJSONManifest() *JSONManifest {
-	return &JSONManifest{ Type: "", 
+	return &JSONManifest{Type: "",
 		Duration: -1,
-		Init: nil, 
-		Media: []*MediaSegment{},
+		Init:     nil,
+		Media:    []*MediaSegment{},
 	}
 }
