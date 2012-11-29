@@ -248,7 +248,7 @@ var ID_TO_TYPE_MAP_ = {
  */
 function getKeyForId_(id) {
   return id.toString(16).toUpperCase();
-};
+}
 
 
 /**
@@ -259,7 +259,7 @@ function getKeyForId_(id) {
 function getNameForId_(id) {
   var idStr = getKeyForId_(id);
   return ID_TO_NAME_MAP_[idStr] || ('UNKNOWN_ID(' + idStr + ')');
-};
+}
 
 
 /**
@@ -273,17 +273,16 @@ WebMValidator.prototype.isIdAList = function(id) {
 /**
  * Parses an element header ID field.
  * @param {?Uint8Array} buf The buffer to parse.
- * @return {{status: msetools.ParserStatus}|{status: msetools.ParserStatus,
- * bytesUsed: number, id: string}}
+ * @return {{status: msetools.ParserStatus, bytesUsed: number, id: string}}
  * @private
  */
 function parseWebMId_(buf) {
   if (!buf)
-    return { status: msetools.ParserStatus.ERROR };
-  
+    return { status: msetools.ParserStatus.ERROR, bytesUsed: 0, id: '' };
+
   if (buf.length < 1)
-    return { status: msetools.ParserStatus.NEED_MORE_DATA };
-  
+    return { status: msetools.ParserStatus.NEED_MORE_DATA, bytesUsed: 0, id: '' };
+
   var bytesNeeded = 0;
   var mask = 0x80;
   var allOnesMask = 0x7f;
@@ -295,12 +294,12 @@ function parseWebMId_(buf) {
     mask >>= 1;
     allOnesMask >>= 1;
   }
-  
+
   if (bytesNeeded == 0)
-    return { status: msetools.ParserStatus.ERROR };
-  
+    return { status: msetools.ParserStatus.ERROR, bytesUsed: 0, id: '' };
+
   if (buf.length < bytesNeeded)
-    return { status: msetools.ParserStatus.NEED_MORE_DATA };
+    return { status: msetools.ParserStatus.NEED_MORE_DATA, bytesUsed: 0, id: '' };
 
 
   /** @type {number} */ var raw_id = buf[0];
@@ -310,32 +309,31 @@ function parseWebMId_(buf) {
     raw_id = (raw_id * 256) + ch;
     allOnes = allOnes && (ch == 0xff);
   }
-  
+
   var id = msetools.RESERVED_ID;
   if (!allOnes)
     id = getNameForId_(raw_id);
-  
+
   return {
     status: msetools.ParserStatus.OK,
     bytesUsed: bytesNeeded,
     id: id
   };
-};
+}
 
 
 /**
  * Parses an element header size field.
  * @param {?Uint8Array} buf The buffer to parse.
- * @return {{status: msetools.ParserStatus}|{status: msetools.ParserStatus,
- * bytesUsed: number, size: number}}
+ * @return {{status: msetools.ParserStatus, bytesUsed: number, size: number}}
  * @private
  */
 function parseWebMSize_(buf) {
   if (!buf)
-    return { status: msetools.ParserStatus.ERROR };
+    return { status: msetools.ParserStatus.ERROR, bytesUsed: 0, size: 0 };
 
   if (buf.length < 1)
-    return { status: msetools.ParserStatus.NEED_MORE_DATA };
+    return { status: msetools.ParserStatus.NEED_MORE_DATA, bytesUsed: 0, size: 0 };
 
   var bytesNeeded = 0;
   var mask = 0x80;
@@ -365,14 +363,14 @@ function parseWebMSize_(buf) {
   }
 
   if (allOnes)
-    size = msetools.RESERVED_SIZE;
+    size = msetools.UNKNOWN_SIZE;
 
   return {
     status: msetools.ParserStatus.OK,
     bytesUsed: bytesNeeded,
     size: size
   };
-};
+}
 
 /**
  * @override
@@ -394,7 +392,7 @@ WebMValidator.prototype.parseElementHeader = function(buf) {
 
   bytesUsed += result.bytesUsed;
 
-  //window.console.log('msetools.parseElementHeader : id ' + msetools.getNameForId(id) +
+  //console.log('msetools.parseElementHeader : id ' + msetools.getNameForId(id) +
   //     ' size ' + result.size);
   return {
     status: msetools.ParserStatus.OK,
@@ -406,7 +404,7 @@ WebMValidator.prototype.parseElementHeader = function(buf) {
 
 WebMValidator.prototype.onListStart = function(id, elementPosition, 
                                                bodyPosition) {
-  window.console.log('onListStart(' + id + 
+  console.log('onListStart(' + id +
                      ', ' + elementPosition +
                      ', ' + bodyPosition + ')');
   return msetools.ParserStatus.OK;
@@ -421,8 +419,7 @@ WebMValidator.prototype.onListStart = function(id, elementPosition,
  * False if the client wants the parser to signal a parse error.
  */
 WebMValidator.prototype.onListEnd = function(id, size) {
-  window.console.log('onListEnd(' + id + 
-                     ', ' + size + ')');
+  console.log('onListEnd(' + id + ', ' + size + ')');
   return true;
 };
 
@@ -435,7 +432,7 @@ WebMValidator.prototype.onListEnd = function(id, size) {
  * False if the client wants the parser to signal a parse error.
  */
 WebMValidator.prototype.onBinary = function(id, value) {
-  //window.console.log('onBinary(' + id + ', ' + value.length + ')');
+  //console.log('onBinary(' + id + ', ' + value.length + ')');
   return true;
 };
 

@@ -48,7 +48,7 @@ msetools.ParserClient = function() {};
 /**
  * Parses an element header.
  * @param {Uint8Array} buf The buffer to parse.
- * @return {{status: msetools.ParserStatus, bytesUsed: number, 
+ * @return {{status: msetools.ParserStatus, bytesUsed: number,
  * id: string, size: number}}
  */
 msetools.ParserClient.prototype.parseElementHeader = function(buf) {};
@@ -66,8 +66,8 @@ msetools.ParserClient.prototype.isIdAList = function(id) {};
  * @param {string} id The ID for the list element.
  * @param {number} elementPosition The position of list element header.
  * @param {number} bodyPosition The position of list element body.
- * @return {msetools.ParserStatus} True if the element was accepted by the client.
- * False if the client wants the parser to signal a parse error.
+ * @return {msetools.ParserStatus} True if the element was accepted by
+ * the client. False if the client wants the parser to signal a parse error.
  */
 msetools.ParserClient.prototype.onListStart =
   function(id, elementPosition, bodyPosition) {};
@@ -189,7 +189,7 @@ msetools.ElementListParser.prototype.append = function(newBuffer) {
 
       if (res.size == msetools.UNKNOWN_SIZE)
         wholeElementSize = msetools.UNKNOWN_SIZE;
-      
+
       var elementPosition = this.bytePosition_;
       var bodyPosition = elementPosition + res.bytesUsed;
       var startRes = this.client_.onListStart(res.id, elementPosition,
@@ -268,14 +268,14 @@ msetools.ElementListParser.prototype.handleListEnd_ = function(bytesUsed) {
     }
 
     li.bytes_left -= listBytesUsed;
-    
+
     if (li.bytes_left > 0)
       break;
-    
+
     if (li.bytes_left < 0) {
       return msetools.ParserStatus.ERROR;
     }
-    
+
     var listSize = this.bytePosition_ - li.startPosition;
     if (!this.client_.onListEnd(li.id, listSize)) {
       return msetools.ParserStatus.ERROR;

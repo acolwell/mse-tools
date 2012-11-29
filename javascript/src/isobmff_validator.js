@@ -86,11 +86,11 @@ ISOBMFFValidator.prototype.endOfStream = function() {
  * @override
  */
 ISOBMFFValidator.prototype.parseElementHeader = function(buf) {
-  var ERROR_STATUS = {status: msetools.ParserStatus.ERROR, 
+  var ERROR_STATUS = {status: msetools.ParserStatus.ERROR,
                       bytesUsed: 0, id: '', size: 0 };
 
   if (buf.length < 8) {
-    return {status: msetools.ParserStatus.NEED_MORE_DATA, 
+    return {status: msetools.ParserStatus.NEED_MORE_DATA,
             bytesUsed: 0, id: '', size: 0 };
   }
 
@@ -133,12 +133,12 @@ ISOBMFFValidator.prototype.parseElementHeader = function(buf) {
     id: id,
     size: size
   };
-}
+};
 
 /**
  * Indicates which element IDs are list elements.
- * 
- * @type {Object.<string, boolean>} 
+ *
+ * @type {Object.<string, boolean>}
  */
 var ID_IS_LIST_MAP = {
   'moov': true,
@@ -155,12 +155,12 @@ var ID_IS_LIST_MAP = {
  */
 ISOBMFFValidator.prototype.isIdAList = function(id) {
   return ID_IS_LIST_MAP[id] || false;
-}
+};
 
 /**
  * Indicates which element IDs are full box elements.
- * 
- * @type {Object.<string, boolean>} 
+ *
+ * @type {Object.<string, boolean>}
  */
 var ID_IS_FULL_BOX_MAP = {
   'trun': true,
@@ -171,21 +171,21 @@ var ID_IS_FULL_BOX_MAP = {
  * Checks to see if the id is a full box element.
  *
  * @param {string} id The id to check.
- * @return {boolean} True if the id is a full box element. 
+ * @return {boolean} True if the id is a full box element.
  * False otherwise.
  */
 ISOBMFFValidator.prototype.isIdAFullBox = function(id) {
   return ID_IS_FULL_BOX_MAP[id] || false;
-}
+};
 
 /**
  * @override
  */
 ISOBMFFValidator.prototype.onListStart = function(id, elementPosition, 
                                                   bodyPosition) {
-  window.console.log('onListStart(' + id + 
-                     ', ' + elementPosition +
-                     ', ' + bodyPosition + ')');
+  console.log('onListStart(' + id +
+              ', ' + elementPosition +
+              ', ' + bodyPosition + ')');
   return msetools.ParserStatus.OK;
 };
 
@@ -194,8 +194,7 @@ ISOBMFFValidator.prototype.onListStart = function(id, elementPosition,
  * @override
  */
 ISOBMFFValidator.prototype.onListEnd = function(id, size) {
-  window.console.log('onListEnd(' + id + 
-                     ', ' + size + ')');
+  console.log('onListEnd(' + id + ', ' + size + ')');
   return true;
 };
 
@@ -206,16 +205,16 @@ ISOBMFFValidator.prototype.onListEnd = function(id, size) {
 ISOBMFFValidator.prototype.onBinary = function(id, value) {
   if (this.isIdAFullBox(id)) {
     if (value.length < 4) {
-      window.console.log('Invalid FullBox \'' + id + '\'');
+      console.log('Invalid FullBox \'' + id + '\'');
       return false;
     }
     var tmp = this.getUint32_(value);
     var version = (tmp >> 24) & 0xff;
     var flags = tmp & 0xffffff;
-    return this.onFullBox(id, version, flags, value.subarray(4))
+    return this.onFullBox(id, version, flags, value.subarray(4));
   }
-  
-  window.console.log('onBinary(' + id + ', ' + value.length + ')');
+
+  console.log('onBinary(' + id + ', ' + value.length + ')');
 
   return true;
 };
@@ -223,17 +222,17 @@ ISOBMFFValidator.prototype.onBinary = function(id, value) {
 /**
  * Called when a full box element has been received.
  *
- * @param {string} id Element id
+ * @param {string} id Element id.
  * @param {number} version The full box version field.
  * @param {number} flags The full box flags field.
  * @param {Uint8Array} value The body of the full box.
  * @return {boolean} True if the element was successfully parsed.
  */
 ISOBMFFValidator.prototype.onFullBox = function(id, version, flags, value) {
-  window.console.log('onFullBox(' + id + 
-                     ', ' + version +
-                     ', 0x' + flags.toString(16) +
-                     ', ' + value.length + ')');
+  console.log('onFullBox(' + id +
+              ', ' + version +
+              ', 0x' + flags.toString(16) +
+              ', ' + value.length + ')');
 
   if (id == 'trun') {
     return this.parseTrun(version, flags, value);
@@ -259,20 +258,20 @@ ISOBMFFValidator.prototype.parseTrun = function(version, flags, value) {
   var hasSampleSize = (flags & 0x200) != 0;
   var hasSampleFlags = (flags & 0x400) != 0;
   var hasSampleCompositionOffsets = (flags & 0x800) != 0;
-  
+
   var sampleCount = this.getUint32_(value.subarray(0));
-  window.console.log('trun.sample_count ' + sampleCount);
+  console.log('trun.sample_count ' + sampleCount);
   var i = 4;
   if (hasDataOffset) {
     var offset = this.getUint32_(value.subarray(i));
-    window.console.log('trun.data_offset ' + offset);
+    console.log('trun.data_offset ' + offset);
     i += 4;
   }
 
   var firstSampleFlags = -1;
   if (hasFirstSampleFlag) {
     firstSampleFlags = this.getUint32_(value.subarray(i));
-    window.console.log('trun.first_sample_flags ' +
+    console.log('trun.first_sample_flags ' +
                        this.sampleFlagsToString_(firstSampleFlags));
     i += 4;
   }
@@ -296,7 +295,7 @@ ISOBMFFValidator.prototype.parseTrun = function(version, flags, value) {
       size = this.getUint32_(value.subarray(i));
       i += 4;
     }
-    
+
     if (hasSampleFlags) {
       sample_flags = this.getUint32_(value.subarray(i));
       i += 4;
@@ -306,10 +305,10 @@ ISOBMFFValidator.prototype.parseTrun = function(version, flags, value) {
       compositionOffset = this.getUint32_(value.subarray(i));
       i += 4;
     }
-    window.console.log('trun : ' + duration +
-                       ' ' + size +
-                       ' ' + this.sampleFlagsToString_(sample_flags) +
-                       ' ' + compositionOffset);
+    console.log('trun : ' + duration +
+                ' ' + size +
+                ' ' + this.sampleFlagsToString_(sample_flags) +
+                ' ' + compositionOffset);
   }
 
   return true;
@@ -330,7 +329,7 @@ ISOBMFFValidator.prototype.parseTfhd = function(version, flags, value) {
   var hasSize = (flags & 0x10) != 0;
   var hasFlags = (flags & 0x20) != 0;
   var isDurationEmpty = (flags & 0x10000) != 0;
-  
+
   var trackId = this.getUint32_(value.subarray(0));
   var i = 4;
   var offset = -1;
@@ -343,7 +342,7 @@ ISOBMFFValidator.prototype.parseTfhd = function(version, flags, value) {
     offset = this.getUint64_(value.subarray(i));
     i += 8;
   }
-  
+
   if (hasIndex) {
     index = this.getUint32_(value.subarray(i));
     i += 4;
@@ -358,19 +357,19 @@ ISOBMFFValidator.prototype.parseTfhd = function(version, flags, value) {
     this.default_sample_size_ = this.getUint32_(value.subarray(i));
     i += 4;
   }
-  
+
   if (hasFlags) {
     this.default_sample_flags_ = this.getUint32_(value.subarray(i));
     i += 4;
   }
 
-  window.console.log('tfhd :' + 
-                     ' ' + trackId + 
-                     ' ' + offset +
-                     ' ' + index +
-                     ' ' + this.default_sample_duration_ +
-                     ' ' + this.default_sample_size_ +
-                     ' ' + this.sampleFlagsToString_(this.default_sample_flags_));
+  console.log('tfhd :' +
+              ' ' + trackId +
+              ' ' + offset +
+              ' ' + index +
+              ' ' + this.default_sample_duration_ +
+              ' ' + this.default_sample_size_ +
+              ' ' + this.sampleFlagsToString_(this.default_sample_flags_));
   return true;
 };
 
@@ -382,16 +381,16 @@ ISOBMFFValidator.prototype.parseTfhd = function(version, flags, value) {
  */
 ISOBMFFValidator.prototype.sampleFlagsToString_ = function(flags) {
   var str = '[';
-  
+
   str += ' DO' + ((flags >> 24) & 0x3);
   str += ' IDO' + ((flags >> 22) & 0x3);
   str += ' HR' + ((flags >> 20) & 0x3);
   str += ' P' + ((flags >> 17) & 0x7);
   str += ' D' + ((flags >> 16) & 0x1);
   str += ' PR' + (flags & 0xffff);
-  str += ' ]'
+  str += ' ]';
   return str;
-}
+};
 
 /**
  * Extracts a 32-bit big endian integer from buf.

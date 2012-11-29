@@ -19,7 +19,7 @@
  */
 function RemoteFile(url) {
   this.url_ = url;
-};
+}
 
 
 /**
@@ -144,7 +144,7 @@ RemoteFile.prototype.seek = function(newPosition) {
 /**
  * Reads data from the current position.
  * @param {number} size The number of bytes to read.
- * @param {RemoteFile.ReadCallback} doneCallback The callback to run 
+ * @param {RemoteFile.ReadCallback} doneCallback The callback to run
  * when the read has completed.
  */
 RemoteFile.prototype.read = function(size, doneCallback) {

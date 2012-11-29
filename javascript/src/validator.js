@@ -53,7 +53,7 @@ function SourceBufferValidator(parent, id, type, sourceBuffer) {
 
   this.sourceBuffer_.append = this.append.bind(this, appendFunc);
   this.sourceBuffer_.abort = this.abort.bind(this, abortFunc);
-};
+}
 
 /**
  * ByteStreamValidator used for this source buffer.
@@ -71,7 +71,7 @@ SourceBufferValidator.prototype.append = function(originalMethod, data) {
 
   if (this.bytestreamValidator_) {
     var errors = this.bytestreamValidator_.parse(data);
-    
+
     for (var i = 0; i < errors.length; ++i) {
       console.log(errors[i]);
     }
@@ -96,7 +96,7 @@ SourceBufferValidator.prototype.abort = function(originalMethod) {
 
   try {
     originalMethod();
-  } catch (e) {
+  } catch (/** @type DOMException */ e) {
     throw e;
   }
 };
@@ -108,7 +108,7 @@ SourceBufferValidator.prototype.endOfStream = function(error) {
   if (this.bytestreamValidator_) {
     this.bytestreamValidator_.endOfStream();
   }
-}
+};
 
 /**
  * Parse bytestream type string.
@@ -138,7 +138,7 @@ SourceBufferValidator.prototype.parseType_ = function(type) {
     console.log('\'' + type + '\' has invalid type & subtype.');
     return null;
   }
-  
+
   var majorType = majorMinor[0].toLowerCase();
   var minorType = majorMinor[1].toLowerCase();
   if ((majorType != 'video') && (majorType != 'audio')) {
@@ -175,7 +175,7 @@ SourceBufferValidator.prototype.parseType_ = function(type) {
   }
 
   return { major: majorType, minor: minorType, codecs: codecs };
-}
+};
 
 /**
  * @constructor
@@ -202,7 +202,7 @@ function MediaSourceValidator(id, mediaSource) {
     this, removeSourceBufferFunc);
   this.mediaSource_.endOfStream = this.endOfStream.bind(
     this, endOfStreamFunc);
-};
+}
 
 /**
  * @type {Array.<SourceBufferValidator>}
@@ -214,7 +214,7 @@ MediaSourceValidator.prototype.sourceBuffers_ = null;
  */
 MediaSourceValidator.prototype.mediaSource = function() {
   return this.mediaSource_;
-}
+};
 
 /**
  * @param {function(string) : SourceBuffer} originalMethod
@@ -264,19 +264,19 @@ MediaSourceValidator.prototype.removeSourceBuffer = function(
  * @param {MediaSource.EndOfStreamError=} error
  */
 MediaSourceValidator.prototype.endOfStream = function(originalMethod, error) {
-  console.log(this.id_ + ': MediaSource.endOfStream(' + 
+  console.log(this.id_ + ': MediaSource.endOfStream(' +
               ((error != undefined) ? error : '') + ')');
 
   try {
     if (error == undefined) {
-      originalMethod()
+      originalMethod();
     } else {
       originalMethod(error);
     }
   } catch (e) {
-    if (e.code ==  DOMException.INVALID_STATE_ERR) {
+    if (e.code == DOMException.INVALID_STATE_ERR) {
       console.log(this.id_ + ': MediaSource.endOfStream()' +
-                  ' called in unexpected readyState "' + 
+                  ' called in unexpected readyState "' +
                   this.mediaSource_.readyState + '"');
     }
     throw e;

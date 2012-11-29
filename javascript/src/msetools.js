@@ -18,4 +18,5 @@
 var msetools = {};
 window['msetools'] = msetools;
 
+/** @type {Console} */
 var console = window.console;

@@ -24,11 +24,11 @@
   ];
 
   var basePath = null;
-  var head = document.querySelector('head')
+  var head = document.querySelector('head');
   var children = head.childNodes;
   for (var i = 0, max = children.length; i < max; ++i) {
     var child = children[i];
-    if (child.nodeName == 'SCRIPT' && 
+    if (child.nodeName == 'SCRIPT' &&
         (child.src.indexOf(nameOfThisFile) >= 0)) {
       basePath = child.src.replace(nameOfThisFile, '');
       break;
