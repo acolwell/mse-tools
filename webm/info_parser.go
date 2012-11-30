@@ -15,7 +15,7 @@
 package webm
 
 import (
-	"github.com/acolwell/mse-tools/go/ebml"
+	"github.com/acolwell/mse-tools/ebml"
 	"log"
 	"math"
 )

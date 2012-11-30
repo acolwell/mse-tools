@@ -14,7 +14,7 @@
 
 package webm
 
-import "github.com/acolwell/mse-tools/go/ebml"
+import "github.com/acolwell/mse-tools/ebml"
 
 const (
 	IdSegment                    = 0x18538067

@@ -17,8 +17,8 @@ package main
 import (
 	"code.google.com/p/go.net/websocket"
 	"fmt"
-	"github.com/acolwell/mse-tools/go/ebml"
-	"github.com/acolwell/mse-tools/go/webm"
+	"github.com/acolwell/mse-tools/ebml"
+	"github.com/acolwell/mse-tools/webm"
 	"io"
 	"net/url"
 	"os"

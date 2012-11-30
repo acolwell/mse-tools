@@ -18,6 +18,6 @@ Go tools that simplify building applications for the
 - Setup your $GOPATH as described in [How to Write Go Code](http://golang.org/doc/code.html)
 - Run the following commands:
     <pre>`cd $GOPATH
-    go get github.com/acolwell/mse-tools/go/...
+    go get github.com/acolwell/mse-tools/...
     `</pre>
 - All the command-line tools will appear in $GOPATH/bin

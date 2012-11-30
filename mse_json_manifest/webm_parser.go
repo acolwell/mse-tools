@@ -16,8 +16,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/acolwell/mse-tools/go/ebml"
-	"github.com/acolwell/mse-tools/go/webm"
+	"github.com/acolwell/mse-tools/ebml"
+	"github.com/acolwell/mse-tools/webm"
 	"time"
 )
 
