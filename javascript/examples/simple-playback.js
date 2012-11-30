@@ -1,4 +1,4 @@
-(function (window, undefined) {
+(function(window, undefined) {
   var isFirstOpen = true;
 
   var appendMoreData = null;
@@ -23,7 +23,7 @@
       appendMoreData();
     };
 
-    return function() { 
+    return function() {
       if (readPending)
         return;
 
@@ -42,7 +42,7 @@
       }
 
       readPending = true;
-      file.read(128 * 1024, readDone); 
+      file.read(128 * 1024, readDone);
     }
   }
 
@@ -56,18 +56,32 @@
 
     isFirstOpen = false;
 
-    var info;
-    info = { url: 'test6.mp4', type: 'video/mp4; codecs="avc1.42E000,mp4a.40.2"'};
-    //info = { url: '/webm/bear-320x240.webm', type: 'video/webm; codecs="vorbis,vp8"'};
+    var url = document.getElementById('u').value;
+    var codecs = document.getElementById('c').value;
 
+    var type = '';
+    if (codecs.indexOf('avc1.') != -1 || codecs.indexOf('avc1.') != -1) {
+      type = 'video/mp4; codecs="' + codecs + '"';
+    } else if (codecs.indexOf('vp8') != -1 || codecs.indexOf('vorbis') != -1) {
+      type = 'video/webm; codecs="' + codecs + '"';
+    }
+
+    if (type.length == 0) {
+      console.log('Couldn\'t determine type from codec string "' +
+	  codecs + '"');
+      return;
+    }
+
+    var info = { url: url, type: type};
     var sourceBuffer = mediaSource.addSourceBuffer(info.type);
     var file = new msetools.RemoteFile(info.url);
-    var isPlaying = function() { 
+    var isPlaying = function() {
       return videoTag.readyState > videoTag.HAVE_FUTURE_DATA;
     };
     appendMoreData = createAppendFunction(mediaSource, sourceBuffer, file,
                                           isPlaying);
-    videoTag.addEventListener('progress', onProgress.bind(videoTag, mediaSource));
+    videoTag.addEventListener('progress', onProgress.bind(videoTag,
+							  mediaSource));
 
     appendMoreData();
   }
@@ -77,13 +91,45 @@
   }
 
   function onPageLoad() {
+    document.getElementById('b').addEventListener('click', loadUrl);
+
+    var loadURL = false;
+
+    // Extract the 'url' parameter from the document URL.
+    var urlRegex = new RegExp('[\\?&]url=([^&#]*)');
+    var codecsRegex = new RegExp('[\\?&]codecs=([^&#]*)');
+    var results = urlRegex.exec(window.location.href);
+    if (results != null) {
+      var url = results[1];
+
+      // Assign to the input field.
+      var u = document.getElementById('u');
+      u.value = url;
+    }
+
+    results = codecsRegex.exec(window.location.href);
+    if (results != null) {
+      var codecs = results[1];
+
+      // Assign to the input field.
+      var c = document.getElementById('c');
+      c.value = codecs;
+      loadURL = true;
+    }
+
+    if (loadURL) {
+      loadUrl();
+    }
+  }
+
+  function loadUrl() {
     window.MediaSource = window.MediaSource || window.WebKitMediaSource;
 
     var video = document.getElementById('v');
     var mediaSource = new MediaSource();
 
     msetools.attachValidator(mediaSource);
-    mediaSource.addEventListener('webkitsourceopen', 
+    mediaSource.addEventListener('webkitsourceopen',
                                  onSourceOpen.bind(this, video));
     video.src = window.URL.createObjectURL(mediaSource);
   }

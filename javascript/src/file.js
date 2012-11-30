@@ -252,7 +252,7 @@ RemoteFile.prototype.downloadData_ = function(readSize,
  */
 RemoteFile.prototype.onLoad_ = function(readSize, event) {
   var xhr = (/** @type {XMLHttpRequest} */ event.target);
-  if (xhr.status != 206) {
+  if (xhr.status != 206 && xhr.status != 0) {
     this.downloadDataDone_(readSize, null);
     return;
   }
