@@ -1,7 +1,7 @@
 mse-tools
 =========================================
 
-Javascript and Go tools that simplify building applications for the 
+Go tools that simplify building applications for the 
 [Media Source Extensions](http://dvcs.w3.org/hg/html-media/raw-file/tip/media-source/media-source.html).
 
 ## Go Command-line Tools
@@ -21,6 +21,3 @@ Javascript and Go tools that simplify building applications for the
     go get github.com/acolwell/mse-tools/go/...
     `</pre>
 - All the command-line tools will appear in $GOPATH/bin
-
-## Javascript Libraries
-Javascript format parsers and validators coming soon...
