@@ -15,6 +15,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
@@ -49,17 +51,38 @@ func main() {
 		}
 	}
 
-	buf := [1024]byte{}
+	buf := [4096]byte{}
 
-	parser := NewWebMParser()
-
+	var parser Parser = nil
 	for done := false; !done; {
 		bytesRead, err := in.Read(buf[:])
 		if err == io.EOF || err == io.ErrClosedPipe {
 			done = true
-		} else {
-			parser.Append(buf[0:bytesRead])
+			continue
+		}
+
+		if parser == nil {
+			if len(buf) < 8 {
+				log.Printf("Not enough bytes to detect file type.\n")
+				break
+			} else if binary.BigEndian.Uint32(buf[0:4]) == 0x1a45dfa3 {
+				parser = NewWebMParser()
+			} else if bytes.NewBuffer(buf[4:8]).String() == "ftyp" {
+				parser = NewISOBMFFParser()
+			}
+
+			if parser == nil {
+				log.Printf("Unknown file type.\n")
+				break
+			}
+		}
+
+		if !parser.Append(buf[0:bytesRead]) {
+			log.Printf("Parse error\n")
 		}
 	}
-	parser.EndOfData()
+
+	if parser != nil {
+		parser.EndOfData()
+	}
 }
