@@ -7,7 +7,7 @@ Go tools that simplify building applications for the
 ## Go Command-line Tools
 ### Tools
 * mse\_webm\_remuxer - Remuxes a WebM file so it conforms to [WebM Byte Stream](http://dvcs.w3.org/hg/html-media/raw-file/tip/media-source/media-source.html#webm) requirements. 
-* mse\_json\_maifest - Generates a simple JSON manifest that contains information about the initialization segment and media segments in a WebM file.
+* mse\_json\_manifest - Generates a simple JSON manifest that contains information about the initialization segment and media segments in a WebM file.
 * webm\_dump - Simple debugging tool that dumps the element information in a WebM file.
 
 ### Requirements
