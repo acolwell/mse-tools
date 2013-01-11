@@ -54,7 +54,8 @@ func (p *infoParserClient) OnListEnd(offset int64, id int) bool {
 
 func (p *infoParserClient) OnBinary(id int, value []byte) bool {
 	switch id {
-	case ebml.IdVoid,
+	case ebml.IdCRC32,
+		ebml.IdVoid,
 		IdSegmentUID,
 		IdSegmentFilename,
 		IdPrevUID,
@@ -110,7 +111,7 @@ func ParseInfoElement(buf []byte) InfoElement {
 		IdDateUTC:       ebml.TypeInt}
 
 	client := &infoParserClient{
-		timecodeScale: 0,
+		timecodeScale: 1000000,
 		duration:      math.Inf(1),
 		date:          0}
 	parser := ebml.NewParser(ebml.GetListIDs(typeInfo), map[int][]int{},

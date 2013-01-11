@@ -15,13 +15,13 @@
 package webm
 
 type BlockInfo struct {
-	Id       uint64
-	Timecode int
-	Flags    uint8
+	Id         uint64
+	Timecode   int
+	Flags      uint8
 	HeaderSize int
 }
 
-func ParseSimpleBlock(buf []byte) (*BlockInfo) {
+func ParseSimpleBlock(buf []byte) *BlockInfo {
 	if len(buf) < 4 {
 		return nil
 	}
@@ -34,7 +34,7 @@ func ParseSimpleBlock(buf []byte) (*BlockInfo) {
 	}
 
 	// Check for invalid ID size.
-	if (idSize == 8) {
+	if idSize == 8 {
 		return nil
 	}
 

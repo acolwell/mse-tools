@@ -75,7 +75,7 @@ func (p *parserClient) OnListEnd(offset int64, id int) bool {
 }
 
 func (p *parserClient) OnBinary(id int, value []byte) bool {
-	return false
+	return id == IdCRC32 || id == IdVoid
 }
 
 func (p *parserClient) OnInt(id int, value int64) bool {

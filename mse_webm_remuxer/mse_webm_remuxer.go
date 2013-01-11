@@ -199,7 +199,10 @@ func (c *DemuxerClient) OnBinary(id int, value []byte) bool {
 		return c.ParseSimpleBlock(value)
 	}
 
-	if id == webm.IdCues {
+	switch id {
+	case webm.IdCues,
+		webm.IdPrevSize,
+		webm.IdPosition:
 		return true
 	}
 
@@ -385,13 +388,20 @@ func (c *DemuxerClient) tryWritingNextBlock() {
 	audioBlock1 := audio[0]
 	audioBlock2 := audio[1]
 
-	if videoBlock.IsKeyframe() &&
-		audioBlock1.IsKeyframe() &&
-		audioBlock1.timecode <= videoBlock.timecode &&
-		audioBlock2.timecode > videoBlock.timecode &&
-		(audioBlock1.timecode-c.outputClusterTimecode) >= c.minClusterDuration {
-		// This is the situation where a new cluster is allowed.
-		c.startNewCluster(audioBlock1.id, audioBlock1.timecode)
+	if videoBlock.IsKeyframe() && audioBlock1.IsKeyframe() &&
+		audioBlock2.timecode > videoBlock.timecode {
+		newClusterId := audioBlock1.id
+		newClusterTimecode := audioBlock1.timecode
+
+		if audioBlock1.timecode > videoBlock.timecode {
+			newClusterId = videoBlock.id
+			newClusterTimecode = videoBlock.timecode
+		}
+
+		clusterDuration := newClusterTimecode - c.outputClusterTimecode
+		if clusterDuration >= c.minClusterDuration {
+			c.startNewCluster(newClusterId, newClusterTimecode)
+		}
 	}
 
 	if audioBlock1.timecode <= videoBlock.timecode {
@@ -455,7 +465,7 @@ func (c *DemuxerClient) writeSimpleBlock(block *Block) {
 	rawTimecode := block.timecode - c.outputClusterTimecode
 
 	if rawTimecode > 0x7fff {
-		panic(fmt.Sprintf("rawTimecode is too big %d\n", rawTimecode))
+		panic(fmt.Sprintf("rawTimecode is too big %d (%d)\n", rawTimecode, block.timecode))
 	}
 	buffer := bytes.NewBuffer([]byte{})
 	buffer.WriteByte(0x80 | byte(block.id))
