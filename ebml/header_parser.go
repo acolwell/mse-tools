@@ -150,13 +150,39 @@ func ParseHeader(buf []byte) Header {
 		return nil
 	}
 
-	if client.Version() != 1 ||
-		client.ReadVersion() != 1 ||
-		client.MaxIDLength() > 4 ||
-		client.MaxSizeLength() > 8 ||
-		client.DocType() == "" ||
-		client.DocTypeVersion() != 2 ||
-		client.DocTypeReadVersion() != 2 {
+	if client.Version() != 1 {
+		log.Printf("Unsupported EBML Version %d", client.Version())
+		return nil
+	}
+
+	if client.ReadVersion() != 1 {
+		log.Printf("Unsupported EBML ReadVersion %d", client.ReadVersion())
+		return nil
+	}
+
+	if client.MaxIDLength() > 4 {
+		log.Printf("Unsupported EBML MaxIDLength %d", client.MaxIDLength())
+		return nil
+
+	}
+
+	if client.MaxSizeLength() > 8 {
+		log.Printf("Unsupported EBML MaxSizeLength %d", client.MaxSizeLength())
+		return nil
+	}
+
+	if client.DocType() == "" {
+		log.Printf("Empty EBML DocType not supported")
+		return nil
+	}
+
+	if client.DocTypeVersion() < 1 {
+		log.Printf("Unsupported EBML DocTypeVersion %d", client.DocTypeVersion())
+		return nil
+	}
+
+	if client.DocTypeReadVersion() < 1 {
+		log.Printf("Unsupported EBML DocTypeReadVersion %d", client.DocTypeReadVersion())
 		return nil
 	}
 

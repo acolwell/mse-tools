@@ -14,6 +14,8 @@
 
 package ebml
 
+import "fmt"
+
 const (
 	IdReserved           = 0x1FFFFFFF
 	IdVoid               = 0xEC
@@ -60,5 +62,8 @@ var idToName = map[int]string{
 }
 
 func IdToName(id int) string {
-	return idToName[id]
+	if name, ok := idToName[id]; ok {
+		return name
+	}
+	return fmt.Sprintf("UnknownID(0x%x)", id)
 }

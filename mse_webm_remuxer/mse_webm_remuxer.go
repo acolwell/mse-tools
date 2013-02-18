@@ -53,6 +53,7 @@ type DemuxerClient struct {
 	startTimecode   int64
 	clusterTimecode int64
 	tracks          []webm.Track
+	isVorbis        map[uint64]bool
 	blocks          map[uint64][]*Block
 	cues            []Cue
 
@@ -191,7 +192,11 @@ func (c *DemuxerClient) OnBinary(id int, value []byte) bool {
 			return false
 		}
 		c.outputTracksOffset = c.writer.Offset()
-		c.writer.Write(id, value)
+
+		// Filter out deprecated values.
+		filteredValue := webm.Filter(value, []int{webm.IdFrameRate})
+
+		c.writer.Write(id, filteredValue)
 		return true
 	}
 
@@ -281,7 +286,18 @@ func (c *DemuxerClient) ParseEBMLHeader(buf []byte) bool {
 		log.Printf("Failed to parse EBML header\n")
 		return false
 	}
-	return header.DocType() == "webm"
+
+	if header.DocType() != "webm" {
+		log.Printf("EBML header has an unsupported DocType '%s'\n", header.DocType())
+		return false
+	}
+
+	if header.DocTypeReadVersion() != 2 {
+		log.Printf("EBML header has an unsupported DocTypeReadVersion %d\n", header.DocTypeReadVersion())
+		return false
+	}
+
+	return true
 }
 
 func (c *DemuxerClient) ParseInfo(buf []byte) bool {
@@ -300,7 +316,9 @@ func (c *DemuxerClient) ParseInfo(buf []byte) bool {
 func (c *DemuxerClient) ParseTracks(buf []byte) bool {
 	c.tracks = webm.ParseTracksElement(buf)
 	for i := range c.tracks {
-		c.blocks[c.tracks[i].ID()] = []*Block{}
+		id := c.tracks[i].ID()
+		c.blocks[id] = []*Block{}
+		c.isVorbis[id] = c.tracks[i].CodecID() == "A_VORBIS";
 	}
 
 	return c.tracks != nil
@@ -342,6 +360,12 @@ func (c *DemuxerClient) ParseSimpleBlock(buf []byte) bool {
 
 	if c.startTimecode == -1 {
 		c.startTimecode = timecode
+	}
+
+	// Fix any Vorbis blocks that don't have the keyframe flag set. This has been
+	// observed in WebM files that specify Flix as the MuxingApp and WritingApp.
+	if c.isVorbis[id] && (flags & 0x80) != 0x80 {
+		flags |= 0x80;
 	}
 
 	blockList, ok := c.blocks[id]
@@ -388,20 +412,13 @@ func (c *DemuxerClient) tryWritingNextBlock() {
 	audioBlock1 := audio[0]
 	audioBlock2 := audio[1]
 
-	if videoBlock.IsKeyframe() && audioBlock1.IsKeyframe() &&
-		audioBlock2.timecode > videoBlock.timecode {
-		newClusterId := audioBlock1.id
-		newClusterTimecode := audioBlock1.timecode
-
-		if audioBlock1.timecode > videoBlock.timecode {
-			newClusterId = videoBlock.id
-			newClusterTimecode = videoBlock.timecode
-		}
-
-		clusterDuration := newClusterTimecode - c.outputClusterTimecode
-		if clusterDuration >= c.minClusterDuration {
-			c.startNewCluster(newClusterId, newClusterTimecode)
-		}
+	if videoBlock.IsKeyframe() &&
+		audioBlock1.IsKeyframe() &&
+		audioBlock1.timecode <= videoBlock.timecode &&
+		audioBlock2.timecode > videoBlock.timecode &&
+		(audioBlock1.timecode-c.outputClusterTimecode) >= c.minClusterDuration {
+		// This is the situation where a new cluster is allowed.
+		c.startNewCluster(audioBlock1.id, audioBlock1.timecode)
 	}
 
 	if audioBlock1.timecode <= videoBlock.timecode {
@@ -526,6 +543,7 @@ func NewDemuxerClient(writer *ebml.Writer) *DemuxerClient {
 		startTimecode:         -1,
 		clusterTimecode:       -1,
 		tracks:                nil,
+		isVorbis:              map[uint64]bool{},
 		blocks:                map[uint64][]*Block{},
 		cues:                  []Cue{},
 		outputSegmentOffset:   -1,

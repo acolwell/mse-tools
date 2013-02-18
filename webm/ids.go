@@ -100,6 +100,7 @@ const (
 	IdDisplayUnit                = 0x54B2
 	IdAspectRatioType            = 0x54B3
 	IdColorSpace                 = 0x2EB524
+	IdFrameRate                  = 0x2383E3
 	IdAudio                      = 0xE1
 	IdSamplingFrequency          = 0xB5
 	IdOutputSamplingFrequency    = 0x78B5
@@ -239,6 +240,7 @@ var webmIdTypes = map[int]int{
 	IdDisplayHeight:           ebml.TypeUint,
 	IdDisplayUnit:             ebml.TypeUint,
 	IdAspectRatioType:         ebml.TypeUint,
+	IdFrameRate:               ebml.TypeFloat,
 	IdAudio:                   ebml.TypeList,
 	IdSamplingFrequency:       ebml.TypeFloat,
 	IdOutputSamplingFrequency: ebml.TypeFloat,
@@ -348,6 +350,7 @@ var idToName = map[int]string{
 	IdDisplayUnit:                "DisplayUnit",
 	IdAspectRatioType:            "AspectRatioType",
 	IdColorSpace:                 "ColorSpace",
+	IdFrameRate:                  "FrameRate",
 	IdAudio:                      "Audio",
 	IdSamplingFrequency:          "SamplingFrequency",
 	IdOutputSamplingFrequency:    "OutputSamplingFrequency",
