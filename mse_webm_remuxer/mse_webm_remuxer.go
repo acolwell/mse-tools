@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"code.google.com/p/go.net/websocket"
+	"flag"
 	"fmt"
 	"github.com/acolwell/mse-tools/ebml"
 	"github.com/acolwell/mse-tools/webm"
@@ -44,6 +45,7 @@ type Cue struct {
 
 type DemuxerClient struct {
 	writer          *ebml.Writer
+	minClusterDurationInMS int
 	readEBMLHeader  bool
 	audioTrackID    uint64
 	videoTrackID    uint64
@@ -308,7 +310,7 @@ func (c *DemuxerClient) ParseInfo(buf []byte) bool {
 	}
 
 	scale := float64(1000000000 / info.TimecodeScale())
-	c.minClusterDuration = int64(0.25 * scale)
+	c.minClusterDuration = int64(scale * float64(c.minClusterDurationInMS) / 1000.0)
 
 	return true
 }
@@ -531,9 +533,10 @@ func (c *DemuxerClient) writeCues() {
 	}
 	c.writer.WriteListEnd(webm.IdCues)
 }
-func NewDemuxerClient(writer *ebml.Writer) *DemuxerClient {
+func NewDemuxerClient(writer *ebml.Writer, minClusterDurationInMS int) *DemuxerClient {
 	return &DemuxerClient{
 		writer:                writer,
+		minClusterDurationInMS: minClusterDurationInMS,
 		readEBMLHeader:        false,
 		audioTrackID:          0,
 		videoTrackID:          0,
@@ -563,32 +566,44 @@ func checkError(str string, err error) {
 }
 
 func main() {
-	if len(os.Args) < 3 {
-		log.Printf("Usage: %s <infile> <outfile>\n", os.Args[0])
+	var minClusterDurationInMS int
+	flag.IntVar(&minClusterDurationInMS, "cm", 250, "Minimum Cluster Duration (ms)")
+	flag.Parse()
+
+	if minClusterDurationInMS < 0 || minClusterDurationInMS > 30000 {
+		log.Printf("Invalid minimum cluster duration\n");
+		os.Exit(-1)
+	}
+
+	if len(flag.Args()) < 2 {
+		log.Printf("Usage: %s [-cm <duration>] <infile> <outfile>\n", os.Args[0])
 		return
 	}
 
 	var in *os.File = nil
 	var err error = nil
 
-	if os.Args[1] == "-" {
+	inputArg := flag.Arg(0)
+	outputArg := flag.Arg(1)
+
+	if inputArg == "-" {
 		in = os.Stdin
 	} else {
-		in, err = os.Open(os.Args[1])
+		in, err = os.Open(inputArg)
 		checkError("Open input", err)
 	}
 
 	var out *ebml.Writer = nil
-	if os.Args[2] == "-" {
-		out = ebml.NewWriter(io.WriteSeeker(os.Stdout))
+	if outputArg == "-" {
+		out = ebml.NewNonSeekableWriter(io.WriteSeeker(os.Stdout))
 	} else {
-		if os.Args[1] == os.Args[2] {
+		if inputArg == outputArg {
 			log.Printf("Input and output filenames can't be the same.\n")
 			return
 		}
 
-		if strings.HasPrefix(os.Args[2], "ws://") {
-			url, err := url.Parse(os.Args[2])
+		if strings.HasPrefix(outputArg, "ws://") {
+			url, err := url.Parse(outputArg)
 			checkError("Output url", err)
 
 			origin := "http://localhost/"
@@ -596,9 +611,9 @@ func main() {
 			checkError("WebSocket Dial", err)
 			out = ebml.NewNonSeekableWriter(io.Writer(ws))
 		} else {
-			file, err := os.Create(os.Args[2])
+			file, err := os.Create(outputArg)
 			if err != nil {
-				log.Printf("Failed to create '%s'; err=%s\n", os.Args[2], err.Error())
+				log.Printf("Failed to create '%s'; err=%s\n", outputArg, err.Error())
 				os.Exit(1)
 			}
 			out = ebml.NewWriter(io.WriteSeeker(file))
@@ -606,7 +621,7 @@ func main() {
 	}
 
 	buf := [1024]byte{}
-	c := NewDemuxerClient(out)
+	c := NewDemuxerClient(out, minClusterDurationInMS)
 
 	typeInfo := map[int]int{
 		ebml.IdHeader:      ebml.TypeBinary,
