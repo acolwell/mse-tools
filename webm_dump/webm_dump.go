@@ -107,7 +107,9 @@ func main() {
 	}
 
 	var in io.Reader = nil
-	if strings.HasPrefix(os.Args[1], "ws://") {
+	if os.Args[1] == "-" {
+		in = os.Stdin
+	} else if strings.HasPrefix(os.Args[1], "ws://") {
 		url, err := url.Parse(os.Args[1])
 		checkError("Output url", err)
 
