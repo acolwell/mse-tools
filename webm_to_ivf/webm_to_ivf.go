@@ -53,15 +53,15 @@ func (c *TestClient) WriteHeader() {
 	c.out.Seek(0, os.SEEK_SET)
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, uint32(0x444b4946)) // 'DKIF' magic
-	binary.Write(buf, binary.BigEndian, uint16(0x0))        // version
-	binary.Write(buf, binary.BigEndian, uint16(32))         // header length
+	binary.Write(buf, binary.LittleEndian, uint16(0x0))        // version
+	binary.Write(buf, binary.LittleEndian, uint16(32))         // header length
 	binary.Write(buf, binary.BigEndian, c.codec4cc)
-	binary.Write(buf, binary.BigEndian, c.width)
-	binary.Write(buf, binary.BigEndian, c.height)
-	binary.Write(buf, binary.BigEndian, frameRate)
-	binary.Write(buf, binary.BigEndian, c.timeScale)
-	binary.Write(buf, binary.BigEndian, c.frameCount)
-	binary.Write(buf, binary.BigEndian, uint32(0x0)) // unused
+	binary.Write(buf, binary.LittleEndian, c.width)
+	binary.Write(buf, binary.LittleEndian, c.height)
+	binary.Write(buf, binary.LittleEndian, frameRate)
+	binary.Write(buf, binary.LittleEndian, c.timeScale)
+	binary.Write(buf, binary.LittleEndian, c.frameCount)
+	binary.Write(buf, binary.LittleEndian, uint32(0x0)) // unused
 	c.out.Write(buf.Bytes())
 }
 
@@ -86,11 +86,12 @@ func (c *TestClient) OnBinary(id int, value []byte) bool {
 		blockInfo := webm.ParseSimpleBlock(value)
 		presentationTimecode := int64(c.clusterTimecode) + int64(blockInfo.Timecode)
 		if blockInfo != nil {
-			fmt.Printf("frame size %d timestamp %d\n", len(value), presentationTimecode)
+			frameData := value[blockInfo.HeaderSize:];
+			fmt.Printf("frame size %d timestamp %d\n", len(frameData), presentationTimecode)
 			buf := new(bytes.Buffer)
-			binary.Write(buf, binary.BigEndian, uint32(len(value)))
-			binary.Write(buf, binary.BigEndian, uint64(presentationTimecode))
-			binary.Write(buf, binary.BigEndian, value)
+			binary.Write(buf, binary.LittleEndian, uint32(len(frameData)))
+			binary.Write(buf, binary.LittleEndian, uint64(presentationTimecode))
+			binary.Write(buf, binary.BigEndian, frameData)
 			c.out.Write(buf.Bytes())
 			c.frameCount += 1
 		} else {
