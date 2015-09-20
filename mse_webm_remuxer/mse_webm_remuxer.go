@@ -16,7 +16,7 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/go.net/websocket"
+	"golang.org/x/net/websocket"
 	"flag"
 	"fmt"
 	"github.com/acolwell/mse-tools/ebml"
