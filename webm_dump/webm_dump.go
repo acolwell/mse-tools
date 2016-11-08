@@ -59,7 +59,7 @@ func (c *TestClient) OnBinary(id int, value []byte) bool {
 }
 
 func (c *TestClient) OnInt(id int, value int64) bool {
-	fmt.Printf("%<%s type=\"int\" value=\"%d\"/>\n", c.indent(), webm.IdToName(id), value)
+	fmt.Printf("%s<%s type=\"int\" value=\"%d\"/>\n", c.indent(), webm.IdToName(id), value)
 	return true
 }
 
