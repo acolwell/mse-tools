@@ -57,6 +57,7 @@ const (
 	IdReferencePriority          = 0xFA
 	IdReferenceBlock             = 0xFB
 	IdCodecState                 = 0xA4
+	IdDiscardPadding             = 0x75A2
 	IdSlices                     = 0x8E
 	IdTimeSlice                  = 0xE8
 	IdLaceNumber                 = 0xCC
@@ -82,6 +83,8 @@ const (
 	IdAttachmentLink             = 0x7446
 	IdCodecDecodeAll             = 0xAA
 	IdTrackOverlay               = 0x6FAB
+	IdCodecDelay                 = 0x56AA
+	IdSeekPreRoll                = 0x56BB
 	IdTrackTranslate             = 0x6624
 	IdTrackTranslateEditionUID   = 0x66FC
 	IdTrackTranslateCodec        = 0x66BF
@@ -89,6 +92,7 @@ const (
 	IdVideo                      = 0xE0
 	IdFlagInterlaced             = 0x9A
 	IdStereoMode                 = 0x53B8
+	IdAlphaMode                  = 0x53C0
 	IdPixelWidth                 = 0xB0
 	IdPixelHeight                = 0xBA
 	IdPixelCropBottom            = 0x54AA
@@ -134,6 +138,7 @@ const (
 	IdCueTrackPositions          = 0xB7
 	IdCueTrack                   = 0xF7
 	IdCueClusterPosition         = 0xF1
+	IdCueRelativePosition        = 0xF0
 	IdCueBlockNumber             = 0x5378
 	IdCueCodecState              = 0xEA
 	IdCueReference               = 0xDB
@@ -209,6 +214,8 @@ var webmIdTypes = map[int]int{
 	IdBlock:                   ebml.TypeBinary,
 	IdBlockDuration:           ebml.TypeUint,
 	IdReferenceBlock:          ebml.TypeInt,
+	IdCodecState:              ebml.TypeBinary,
+	IdDiscardPadding:          ebml.TypeInt,
 	IdSlices:                  ebml.TypeList,
 	IdTimeSlice:               ebml.TypeList,
 	IdLaceNumber:              ebml.TypeUint,
@@ -227,9 +234,12 @@ var webmIdTypes = map[int]int{
 	IdCodecID:                 ebml.TypeString,
 	IdCodecPrivate:            ebml.TypeBinary,
 	IdCodecName:               ebml.TypeUTF8,
+	IdCodecDelay:              ebml.TypeUint,
+	IdSeekPreRoll:             ebml.TypeUint,
 	IdVideo:                   ebml.TypeList,
 	IdFlagInterlaced:          ebml.TypeUint,
 	IdStereoMode:              ebml.TypeUint,
+	IdAlphaMode:               ebml.TypeUint,
 	IdPixelWidth:              ebml.TypeUint,
 	IdPixelHeight:             ebml.TypeUint,
 	IdPixelCropBottom:         ebml.TypeUint,
@@ -252,6 +262,7 @@ var webmIdTypes = map[int]int{
 	IdCueTrackPositions:       ebml.TypeList,
 	IdCueTrack:                ebml.TypeUint,
 	IdCueClusterPosition:      ebml.TypeUint,
+	IdCueRelativePosition:     ebml.TypeUint,
 	IdCueBlockNumber:          ebml.TypeUint,
 }
 var idTypes map[int]int = nil
@@ -307,6 +318,7 @@ var idToName = map[int]string{
 	IdReferencePriority:          "ReferencePriority",
 	IdReferenceBlock:             "ReferenceBlock",
 	IdCodecState:                 "CodecState",
+	IdDiscardPadding:             "DiscardPadding",
 	IdSlices:                     "Slices",
 	IdTimeSlice:                  "TimeSlice",
 	IdLaceNumber:                 "LaceNumber",
@@ -332,6 +344,8 @@ var idToName = map[int]string{
 	IdAttachmentLink:             "AttachmentLink",
 	IdCodecDecodeAll:             "CodecDecodeAll",
 	IdTrackOverlay:               "TrackOverlay",
+	IdCodecDelay:                 "CodecDelay",
+	IdSeekPreRoll:                "SeekPreRoll",
 	IdTrackTranslate:             "TrackTranslate",
 	IdTrackTranslateEditionUID:   "TrackTranslateEditionUID",
 	IdTrackTranslateCodec:        "TrackTranslateCodec",
@@ -339,6 +353,7 @@ var idToName = map[int]string{
 	IdVideo:                      "Video",
 	IdFlagInterlaced:             "FlagInterlaced",
 	IdStereoMode:                 "StereoMode",
+	IdAlphaMode:                  "AlphaMode",
 	IdPixelWidth:                 "PixelWidth",
 	IdPixelHeight:                "PixelHeight",
 	IdPixelCropBottom:            "PixelCropBottom",
@@ -384,6 +399,7 @@ var idToName = map[int]string{
 	IdCueTrackPositions:          "CueTrackPositions",
 	IdCueTrack:                   "CueTrack",
 	IdCueClusterPosition:         "CueClusterPosition",
+	IdCueRelativePosition:        "CueRelativePosition",
 	IdCueBlockNumber:             "CueBlockNumber",
 	IdCueCodecState:              "CueCodecState",
 	IdCueReference:               "CueReference",
