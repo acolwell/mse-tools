@@ -72,11 +72,11 @@ func (c *webMClient) OnListEnd(offset int64, id int) bool {
 	if id == webm.IdTracks {
 		contentType := ""
 		if c.vcodec != "" && c.acodec != "" {
-			contentType = fmt.Sprintf("video/webm; codecs=\"%s, %s\"", c.vcodec, c.acodec)
+			contentType = fmt.Sprintf("video/webm;codecs=\"%s,%s\"", c.vcodec, c.acodec)
 		} else if c.vcodec != "" && c.acodec == "" {
-			contentType = fmt.Sprintf("video/webm; codecs=\"%s\"", c.vcodec)
+			contentType = fmt.Sprintf("video/webm;codecs=\"%s\"", c.vcodec)
 		} else if c.vcodec == "" && c.acodec != "" {
-			contentType = fmt.Sprintf("audio/webm; codecs=\"%s\"", c.acodec)
+			contentType = fmt.Sprintf("audio/webm;codecs=\"%s\"", c.acodec)
 		}
 
 		c.manifest.Type = contentType
