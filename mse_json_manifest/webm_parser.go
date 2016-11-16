@@ -22,8 +22,8 @@ import (
 )
 
 type webMClient struct {
-	hasVorbis       bool
-	hasVP8          bool
+	vcodec          string
+	acodec          string
 	timecodeScale   uint64
 	duration        float64
 	headerOffset    int64
@@ -43,8 +43,8 @@ func (c *webMClient) OnListStart(offset int64, id int) bool {
 		}
 		c.headerOffset = offset
 		c.headerSize = -1
-		c.hasVorbis = false
-		c.hasVP8 = false
+		c.vcodec = ""
+		c.acodec = ""
 	} else if id == webm.IdCluster {
 		if c.headerSize == -1 {
 			c.headerSize = offset - c.headerOffset
@@ -71,14 +71,12 @@ func (c *webMClient) OnListEnd(offset int64, id int) bool {
 
 	if id == webm.IdTracks {
 		contentType := ""
-		if c.hasVP8 {
-			contentType = "video/webm; codecs=\"vp8"
-			if c.hasVorbis {
-				contentType += ", vorbis"
-			}
-			contentType += "\""
-		} else if c.hasVorbis {
-			contentType = "audio/webm; codecs=\"vorbis\""
+		if c.vcodec != "" && c.acodec != "" {
+			contentType = fmt.Sprintf("video/webm;codecs=\"%s,%s\"", c.vcodec, c.acodec)
+		} else if c.vcodec != "" && c.acodec == "" {
+			contentType = fmt.Sprintf("video/webm;codecs=\"%s\"", c.vcodec)
+		} else if c.vcodec == "" && c.acodec != "" {
+			contentType = fmt.Sprintf("audio/webm;codecs=\"%s\"", c.acodec)
 		}
 
 		c.manifest.Type = contentType
@@ -136,10 +134,16 @@ func (c *webMClient) OnString(id int, value string) bool {
 	if id == webm.IdCodecID {
 		switch value {
 		case "V_VP8":
-			c.hasVP8 = true
+			c.vcodec = "vp8"
+			break
+		case "V_VP9":
+			c.vcodec = "vp9"
 			break
 		case "A_VORBIS":
-			c.hasVorbis = true
+			c.acodec = "vorbis"
+			break
+		case "A_OPUS":
+			c.acodec = "opus"
 			break
 		}
 	}
@@ -149,8 +153,8 @@ func (c *webMClient) OnString(id int, value string) bool {
 
 func newWebMClient() *webMClient {
 	return &webMClient{
-		hasVorbis:       false,
-		hasVP8:          false,
+		vcodec:          "",
+		acodec:          "",
 		timecodeScale:   0,
 		duration:        -1,
 		headerOffset:    -1,
