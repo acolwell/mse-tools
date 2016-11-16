@@ -15,10 +15,10 @@
 package main
 
 import (
-	"golang.org/x/net/websocket"
 	"fmt"
 	"github.com/acolwell/mse-tools/ebml"
 	"github.com/acolwell/mse-tools/webm"
+	"golang.org/x/net/websocket"
 	"io"
 	"net/url"
 	"os"
@@ -26,7 +26,7 @@ import (
 )
 
 type TestClient struct {
-	depth int
+	depth           int
 	clusterTimecode uint64
 }
 
@@ -43,13 +43,13 @@ func (c *TestClient) OnListEnd(offset int64, id int) bool {
 }
 
 func (c *TestClient) OnBinary(id int, value []byte) bool {
-	if (id != webm.IdSimpleBlock) {
+	if id != webm.IdSimpleBlock && id != webm.IdBlock {
 		fmt.Printf("%s<%s type=\"binary\" size=\"%d\"/>\n", c.indent(), webm.IdToName(id), len(value))
 	} else {
-		blockInfo := webm.ParseSimpleBlock(value);
+		blockInfo := webm.ParseSimpleBlock(value)
 		presentationTimecode := int64(c.clusterTimecode) + int64(blockInfo.Timecode)
-		if (blockInfo != nil) {
-			fmt.Printf("%s<%s type=\"binary\" size=\"%d\" trackNum=\"%d\" timecode=\"%d\" presentationTimecode=\"%d\" flags=\"%x\"/>\n", 
+		if blockInfo != nil {
+			fmt.Printf("%s<%s type=\"binary\" size=\"%d\" trackNum=\"%d\" timecode=\"%d\" presentationTimecode=\"%d\" flags=\"%x\"/>\n",
 				c.indent(), webm.IdToName(id), len(value), blockInfo.Id, blockInfo.Timecode, presentationTimecode, blockInfo.Flags)
 		} else {
 			fmt.Printf("%s<%s type=\"binary\" size=\"%d\" invalid=\"true\"/>\n", c.indent(), webm.IdToName(id), len(value))
@@ -70,8 +70,8 @@ func (c *TestClient) OnUint(id int, value uint64) bool {
 		fmt.Printf("%s<%s type=\"uint\" id_name=\"%s\" value=\"%d\"/>\n", c.indent(), webm.IdToName(id), webm.IdToName(int(value)), value)
 	}
 	if id == webm.IdTimecode {
-	   c.clusterTimecode = value
-	}	   
+		c.clusterTimecode = value
+	}
 	return true
 }
 

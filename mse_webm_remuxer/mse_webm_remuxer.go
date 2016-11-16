@@ -16,11 +16,11 @@ package main
 
 import (
 	"bytes"
-	"golang.org/x/net/websocket"
 	"flag"
 	"fmt"
 	"github.com/acolwell/mse-tools/ebml"
 	"github.com/acolwell/mse-tools/webm"
+	"golang.org/x/net/websocket"
 	"io"
 	"log"
 	"net/url"
@@ -44,20 +44,20 @@ type Cue struct {
 }
 
 type DemuxerClient struct {
-	writer          *ebml.Writer
+	writer                 *ebml.Writer
 	minClusterDurationInMS int
-	readEBMLHeader  bool
-	audioTrackID    uint64
-	videoTrackID    uint64
-	timecodeScale   uint64
-	duration        float64
-	segmentOffset   int64
-	startTimecode   int64
-	clusterTimecode int64
-	tracks          []webm.Track
-	isVorbis        map[uint64]bool
-	blocks          map[uint64][]*Block
-	cues            []Cue
+	readEBMLHeader         bool
+	audioTrackID           uint64
+	videoTrackID           uint64
+	timecodeScale          uint64
+	duration               float64
+	segmentOffset          int64
+	startTimecode          int64
+	clusterTimecode        int64
+	tracks                 []webm.Track
+	isVorbis               map[uint64]bool
+	blocks                 map[uint64][]*Block
+	cues                   []Cue
 
 	minClusterDuration    int64
 	outputSegmentOffset   int64
@@ -69,20 +69,90 @@ type DemuxerClient struct {
 }
 
 type Block struct {
-	id       uint64
-	timecode int64
-	flags    uint8
-	data     []byte
+	id                  uint64
+	isSimple            bool
+	timecode            int64
+	flags               uint8
+	data                []byte
+	extraBlockGroupData []byte
 }
 
 func (b *Block) IsKeyframe() bool {
 	return (b.flags & 0x80) != 0
 }
 
-func NewBlock(id uint64, timecode int64, flags uint8, data []byte) *Block {
-	block := &Block{id: id, flags: flags, timecode: timecode, data: make([]byte, len(data))}
+func NewBlock(id uint64, isSimple bool, timecode int64, flags uint8, data []byte,
+	extraBlockGroupData []byte) *Block {
+	block := &Block{id: id, isSimple: isSimple, flags: flags, timecode: timecode, data: make([]byte, len(data)), extraBlockGroupData: make([]byte, len(extraBlockGroupData))}
 	copy(block.data, data)
+	copy(block.extraBlockGroupData, extraBlockGroupData)
 	return block
+}
+
+type BlockGroupClient struct {
+	parsedBlock bool
+	id          uint64
+	rawTimecode int64
+	flags       uint8
+	blockData   []byte
+	writer      *ebml.Writer
+}
+
+func (c *BlockGroupClient) OnListStart(offset int64, id int) bool {
+	//log.Printf("OnListStart(%d, %s)\n", offset, webm.IdToName(id))
+	log.Printf("OnListStart() : Unexpected element %s\n", webm.IdToName(id))
+	return false
+}
+
+func (c *BlockGroupClient) OnListEnd(offset int64, id int) bool {
+	//log.Printf("OnListEnd(%d, %s)\n", offset, webm.IdToName(id))
+	log.Printf("OnListEnd() : Unexpected element %s\n", webm.IdToName(id))
+	return false
+}
+
+func (c *BlockGroupClient) OnBinary(id int, value []byte) bool {
+	if id == webm.IdBlock {
+		blockInfo := webm.ParseSimpleBlock(value)
+		c.id = blockInfo.Id
+		c.rawTimecode = int64(blockInfo.Timecode)
+		c.flags = blockInfo.Flags & 0x0f
+		c.blockData = value[blockInfo.HeaderSize:]
+		c.parsedBlock = true
+		return true
+	} else if id == webm.IdBlockAdditions {
+		c.writer.Write(id, value)
+		return true
+	}
+	log.Printf("OnBinary() : Unexpected element %s size %d\n", webm.IdToName(id), len(value))
+	return false
+}
+
+func (c *BlockGroupClient) OnInt(id int, value int64) bool {
+	if id == webm.IdDiscardPadding || id == webm.IdReferenceBlock {
+		c.writer.Write(id, value)
+		return true
+	}
+	log.Printf("OnInt() : Unexpected element %s %d\n", webm.IdToName(id), value)
+	return false
+}
+
+func (c *BlockGroupClient) OnUint(id int, value uint64) bool {
+	if id == webm.IdBlockDuration {
+		c.writer.Write(id, value)
+		return true
+	}
+	log.Printf("OnUint() : Unexpected element %s %u\n", webm.IdToName(id), value)
+	return false
+}
+
+func (c *BlockGroupClient) OnFloat(id int, value float64) bool {
+	log.Printf("OnFloat() : Unexpected element %s %f\n", webm.IdToName(id), value)
+	return false
+}
+
+func (c *BlockGroupClient) OnString(id int, value string) bool {
+	log.Printf("OnString() : Unexpected element %s %s\n", webm.IdToName(id), value)
+	return false
 }
 
 func (c *DemuxerClient) OnListStart(offset int64, id int) bool {
@@ -206,6 +276,10 @@ func (c *DemuxerClient) OnBinary(id int, value []byte) bool {
 		return c.ParseSimpleBlock(value)
 	}
 
+	if id == webm.IdBlockGroup {
+		return c.ParseBlockGroup(value)
+	}
+
 	switch id {
 	case webm.IdCues,
 		webm.IdPrevSize,
@@ -320,7 +394,7 @@ func (c *DemuxerClient) ParseTracks(buf []byte) bool {
 	for i := range c.tracks {
 		id := c.tracks[i].ID()
 		c.blocks[id] = []*Block{}
-		c.isVorbis[id] = c.tracks[i].CodecID() == "A_VORBIS";
+		c.isVorbis[id] = c.tracks[i].CodecID() == "A_VORBIS"
 	}
 
 	return c.tracks != nil
@@ -366,8 +440,8 @@ func (c *DemuxerClient) ParseSimpleBlock(buf []byte) bool {
 
 	// Fix any Vorbis blocks that don't have the keyframe flag set. This has been
 	// observed in WebM files that specify Flix as the MuxingApp and WritingApp.
-	if c.isVorbis[id] && (flags & 0x80) != 0x80 {
-		flags |= 0x80;
+	if c.isVorbis[id] && (flags&0x80) != 0x80 {
+		flags |= 0x80
 	}
 
 	blockList, ok := c.blocks[id]
@@ -375,7 +449,54 @@ func (c *DemuxerClient) ParseSimpleBlock(buf []byte) bool {
 		return false
 	}
 
-	c.blocks[id] = append(blockList, NewBlock(id, timecode, flags, buf[idSize+3:]))
+	c.blocks[id] = append(blockList, NewBlock(id, true, timecode, flags, buf[idSize+3:], []byte{}))
+
+	c.tryWritingNextBlock()
+	return true
+}
+
+func (c *DemuxerClient) ParseBlockGroup(buf []byte) bool {
+	if c.clusterTimecode == -1 {
+		panic("Got a block group before the cluster timecode.")
+	}
+
+	typeInfo := map[int]int{
+		webm.IdBlock:          ebml.TypeBinary,
+		webm.IdBlockAdditions: ebml.TypeBinary,
+		webm.IdBlockDuration:  ebml.TypeUint,
+		webm.IdReferenceBlock: ebml.TypeInt,
+		webm.IdDiscardPadding: ebml.TypeInt,
+	}
+
+	bw := ebml.NewBufferWriter(len(buf))
+	bc := &BlockGroupClient{parsedBlock: false, writer: ebml.NewWriter(bw)}
+	p := ebml.NewParser(ebml.GetListIDs(typeInfo), webm.UnknownSizeInfo(),
+		ebml.NewElementParser(bc, typeInfo))
+
+	if !p.Append(buf) {
+		log.Printf("Parser error")
+		return false
+	}
+	p.EndOfData()
+
+	id := bc.id
+	rawTimecode := bc.rawTimecode
+	flags := bc.flags
+
+	timecode := c.clusterTimecode + rawTimecode
+
+	//log.Printf("in track %d %d 0x%x %d\n", id, timecode, flags, len(buf)-3-idSize)
+
+	if c.startTimecode == -1 {
+		c.startTimecode = timecode
+	}
+
+	blockList, ok := c.blocks[id]
+	if !ok {
+		return false
+	}
+
+	c.blocks[id] = append(blockList, NewBlock(id, false, timecode, flags, bc.blockData, bw.Bytes()))
 
 	c.tryWritingNextBlock()
 	return true
@@ -424,11 +545,11 @@ func (c *DemuxerClient) tryWritingNextBlock() {
 	}
 
 	if audioBlock1.timecode <= videoBlock.timecode {
-		c.writeSimpleBlock(audioBlock1)
+		c.writeBlock(audioBlock1)
 		c.blocks[audioID] = audio[1:]
 		return
 	}
-	c.writeSimpleBlock(videoBlock)
+	c.writeBlock(videoBlock)
 	c.blocks[videoID] = video[1:]
 }
 
@@ -445,7 +566,7 @@ func (c *DemuxerClient) writeNextSingleStreamBlock(trackID uint64) {
 		clusterDuration >= c.minClusterDuration {
 		c.startNewCluster(block.id, block.timecode)
 	}
-	c.writeSimpleBlock(block)
+	c.writeBlock(block)
 	c.blocks[trackID] = blocks[1:]
 }
 
@@ -467,7 +588,7 @@ func (c *DemuxerClient) startNewCluster(id uint64, timecode int64) {
 
 }
 
-func (c *DemuxerClient) writeSimpleBlock(block *Block) {
+func (c *DemuxerClient) writeBlock(block *Block) {
 	//log.Printf("out track %d %d 0x%x %d\n", block.id, block.timecode, block.flags, len(block.data))
 
 	if block.id > 0x7f {
@@ -486,13 +607,22 @@ func (c *DemuxerClient) writeSimpleBlock(block *Block) {
 	if rawTimecode > 0x7fff {
 		panic(fmt.Sprintf("rawTimecode is too big %d (%d)\n", rawTimecode, block.timecode))
 	}
+
 	buffer := bytes.NewBuffer([]byte{})
 	buffer.WriteByte(0x80 | byte(block.id))
 	buffer.WriteByte(byte(rawTimecode >> 8))
 	buffer.WriteByte(byte(rawTimecode & 0xff))
 	buffer.WriteByte(block.flags)
 	buffer.Write(block.data)
-	c.writer.Write(webm.IdSimpleBlock, buffer.Bytes())
+	if block.isSimple {
+		c.writer.Write(webm.IdSimpleBlock, buffer.Bytes())
+	} else {
+		c.writer.WriteListStart(webm.IdBlockGroup)
+		c.writer.Write(webm.IdBlock, buffer.Bytes())
+		c.writer.WriteToOutput(block.extraBlockGroupData)
+		// TODO
+		c.writer.WriteListEnd(webm.IdBlockGroup)
+	}
 }
 
 func (c *DemuxerClient) writeRemainingBlocks() {
@@ -513,7 +643,7 @@ func (c *DemuxerClient) writeRemainingBlocks() {
 			break
 		}
 
-		c.writeSimpleBlock(minBlock)
+		c.writeBlock(minBlock)
 		c.blocks[minBlock.id] = c.blocks[minBlock.id][1:]
 	}
 }
@@ -535,26 +665,26 @@ func (c *DemuxerClient) writeCues() {
 }
 func NewDemuxerClient(writer *ebml.Writer, minClusterDurationInMS int) *DemuxerClient {
 	return &DemuxerClient{
-		writer:                writer,
+		writer:                 writer,
 		minClusterDurationInMS: minClusterDurationInMS,
-		readEBMLHeader:        false,
-		audioTrackID:          0,
-		videoTrackID:          0,
-		timecodeScale:         0,
-		duration:              0.0,
-		segmentOffset:         -1,
-		startTimecode:         -1,
-		clusterTimecode:       -1,
-		tracks:                nil,
-		isVorbis:              map[uint64]bool{},
-		blocks:                map[uint64][]*Block{},
-		cues:                  []Cue{},
-		outputSegmentOffset:   -1,
-		outputInfoOffset:      -1,
-		outputTracksOffset:    -1,
-		outputClusterOffset:   -1,
-		outputCuesOffset:      -1,
-		outputClusterTimecode: -1,
+		readEBMLHeader:         false,
+		audioTrackID:           0,
+		videoTrackID:           0,
+		timecodeScale:          0,
+		duration:               0.0,
+		segmentOffset:          -1,
+		startTimecode:          -1,
+		clusterTimecode:        -1,
+		tracks:                 nil,
+		isVorbis:               map[uint64]bool{},
+		blocks:                 map[uint64][]*Block{},
+		cues:                   []Cue{},
+		outputSegmentOffset:    -1,
+		outputInfoOffset:       -1,
+		outputTracksOffset:     -1,
+		outputClusterOffset:    -1,
+		outputCuesOffset:       -1,
+		outputClusterTimecode:  -1,
 	}
 }
 
@@ -571,7 +701,7 @@ func main() {
 	flag.Parse()
 
 	if minClusterDurationInMS < 0 || minClusterDurationInMS > 30000 {
-		log.Printf("Invalid minimum cluster duration\n");
+		log.Printf("Invalid minimum cluster duration\n")
 		os.Exit(-1)
 	}
 

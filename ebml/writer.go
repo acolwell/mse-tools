@@ -63,15 +63,15 @@ func (w *Writer) Write(id int, data interface{}) (int, error) {
 	case uint64:
 		return w.writeUInt64(id, v)
 	case int:
-		return w.writeUInt64(id, uint64(v))
+		return w.writeInt64(id, int64(v))
 	case int8:
-		return w.writeUInt64(id, uint64(v))
+		return w.writeInt64(id, int64(v))
 	case int16:
-		return w.writeUInt64(id, uint64(v))
+		return w.writeInt64(id, int64(v))
 	case int32:
-		return w.writeUInt64(id, uint64(v))
+		return w.writeInt64(id, int64(v))
 	case int64:
-		return w.writeUInt64(id, uint64(v))
+		return w.writeInt64(id, int64(v))
 	case float32:
 	case float64:
 		return w.writeFloat(id, v)
@@ -177,6 +177,10 @@ func (w *Writer) SetOffset(offset int64) bool {
 	return true
 }
 
+func (w *Writer) WriteToOutput(p []byte) (int, error) {
+	return w.writeToOutput(p)
+}
+
 func (w *Writer) writeToOutput(p []byte) (int, error) {
 	n, err := w.writer.Write(p)
 	if err == nil {
@@ -196,18 +200,32 @@ func (w *Writer) writeBinary(id int, body []byte) (int, error) {
 }
 
 func (w *Writer) writeInt64(id int, value int64) (int, error) {
-	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.BigEndian, value)
-	if err != nil {
-		return 0, err
-	}
-	var newValue uint64
-	err = binary.Read(buf, binary.BigEndian, newValue)
-	if err != nil {
-		return 0, err
+	buf := [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
+	count := 0
+
+	if value == 0x80000000 {
+		count = 7
+	} else {
+		var tmp uint64
+		var threshold uint64
+		if value > 0 {
+			tmp = uint64(value)
+			threshold = 0x80
+		} else {
+			tmp = uint64(-value)
+			threshold = 0x100
+		}
+
+		for ; tmp >= threshold && count < 7; count++ {
+			threshold <<= 8
+		}
 	}
 
-	return w.writeUInt64(id, newValue)
+	for i := count; i >= 0; i-- {
+		buf[i] = byte(value & 0xff)
+		value >>= 8
+	}
+	return w.writeBinary(id, buf[:count+1])
 }
 
 func (w *Writer) writeUInt64(id int, value uint64) (int, error) {
