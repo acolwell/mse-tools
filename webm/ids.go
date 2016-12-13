@@ -105,6 +105,12 @@ const (
 	IdAspectRatioType            = 0x54B3
 	IdColorSpace                 = 0x2EB524
 	IdFrameRate                  = 0x2383E3
+	IdProjection                 = 0x7670
+	IdProjectionType             = 0x7671
+	IdProjectionPrivate          = 0x7672
+	IdProjectionPoseYaw          = 0x7673
+	IdProjectionPosePitch        = 0x7674
+	IdProjectionPoseRoll         = 0x7675
 	IdAudio                      = 0xE1
 	IdSamplingFrequency          = 0xB5
 	IdOutputSamplingFrequency    = 0x78B5
@@ -251,6 +257,12 @@ var webmIdTypes = map[int]int{
 	IdDisplayUnit:             ebml.TypeUint,
 	IdAspectRatioType:         ebml.TypeUint,
 	IdFrameRate:               ebml.TypeFloat,
+	IdProjection:              ebml.TypeList,
+	IdProjectionType:          ebml.TypeUint,
+	IdProjectionPrivate:       ebml.TypeBinary,
+	IdProjectionPoseYaw:       ebml.TypeFloat,
+	IdProjectionPosePitch:     ebml.TypeFloat,
+	IdProjectionPoseRoll:      ebml.TypeFloat,
 	IdAudio:                   ebml.TypeList,
 	IdSamplingFrequency:       ebml.TypeFloat,
 	IdOutputSamplingFrequency: ebml.TypeFloat,
@@ -366,6 +378,12 @@ var idToName = map[int]string{
 	IdAspectRatioType:            "AspectRatioType",
 	IdColorSpace:                 "ColorSpace",
 	IdFrameRate:                  "FrameRate",
+	IdProjection:                 "Projection",
+	IdProjectionType:             "ProjectionType",
+	IdProjectionPrivate:          "ProjectionPrivate",
+	IdProjectionPoseYaw:          "ProjectionPoseYaw",
+	IdProjectionPosePitch:        "ProjectionPosePitch",
+	IdProjectionPoseRoll:         "ProjectionPoseRoll",
 	IdAudio:                      "Audio",
 	IdSamplingFrequency:          "SamplingFrequency",
 	IdOutputSamplingFrequency:    "OutputSamplingFrequency",
