@@ -34,7 +34,7 @@ const (
 	LF             = 0x0a
 	END_OF_HEADERS = "\r\n\r\n"
 
-	SEEK_HEAD_RESERVE_SIZE = 124
+	SEEK_HEAD_RESERVE_SIZE = 5 * 30
 )
 
 type Cue struct {
@@ -66,6 +66,7 @@ type DemuxerClient struct {
 	outputClusterOffset   int64
 	outputCuesOffset      int64
 	outputClusterTimecode int64
+	outputTagsOffset      int64
 }
 
 type Block struct {
@@ -280,6 +281,13 @@ func (c *DemuxerClient) OnBinary(id int, value []byte) bool {
 		return c.ParseBlockGroup(value)
 	}
 
+
+	if id == webm.IdTags {
+		c.outputTagsOffset = c.writer.Offset()
+		c.writer.Write(id, value)
+		return true
+	}
+
 	switch id {
 	case webm.IdCues,
 		webm.IdPrevSize,
@@ -345,6 +353,9 @@ func (c *DemuxerClient) writeSeekHead() {
 	}
 	if c.outputCuesOffset > c.outputSegmentOffset {
 		c.writeSeek(webm.IdCues, c.outputCuesOffset)
+	}
+	if c.outputTagsOffset > c.outputSegmentOffset {
+		c.writeSeek(webm.IdTags, c.outputTagsOffset)
 	}
 	c.writer.WriteListEnd(webm.IdSeekHead)
 }
@@ -685,6 +696,7 @@ func NewDemuxerClient(writer *ebml.Writer, minClusterDurationInMS int) *DemuxerC
 		outputClusterOffset:    -1,
 		outputCuesOffset:       -1,
 		outputClusterTimecode:  -1,
+		outputTagsOffset:       -1,
 	}
 }
 
