@@ -112,6 +112,12 @@ func (b *Parser) Append(buf []byte) bool {
 				}
 
 				b.lists = append(b.lists, &listInfo{id: id, size: size, bytesParsed: 0})
+				if size == 0 {
+					if !b.consumeBytes(0) {
+						b.parserError = true
+						return false
+					}
+				}
 				continue
 			}
 
