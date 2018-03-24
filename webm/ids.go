@@ -276,6 +276,21 @@ var webmIdTypes = map[int]int{
 	IdCueClusterPosition:      ebml.TypeUint,
 	IdCueRelativePosition:     ebml.TypeUint,
 	IdCueBlockNumber:          ebml.TypeUint,
+	IdTags:                    ebml.TypeList,
+	IdTag:                     ebml.TypeList,
+	IdTargets:                 ebml.TypeList,
+	IdTargetTypeValue:         ebml.TypeUint,
+	IdTargetType:         	   ebml.TypeString,
+	IdTagTrackUID:         	   ebml.TypeUint,
+	IdTagEditionUID:           ebml.TypeUint,
+	IdTagChapterUID:           ebml.TypeUint,
+	IdTagAttachmentUID:        ebml.TypeUint,
+	IdSimpleTag:               ebml.TypeList,
+	IdTagName:                 ebml.TypeUTF8,
+	IdTagLanguage:             ebml.TypeString,
+	IdTagDefault:              ebml.TypeUint,
+	IdTagString:               ebml.TypeUTF8,
+	IdTagBinary:               ebml.TypeBinary,
 }
 var idTypes map[int]int = nil
 
