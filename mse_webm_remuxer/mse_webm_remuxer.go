@@ -67,6 +67,9 @@ type DemuxerClient struct {
 	outputCuesOffset      int64
 	outputClusterTimecode int64
 	outputTagsOffset      int64
+
+	lastAudioTimecode int64 // Timecode of last audioBlock written.
+	lastVideoTimecode int64 // Timecode of last videoBlock written.
 }
 
 type Block struct {
@@ -280,7 +283,6 @@ func (c *DemuxerClient) OnBinary(id int, value []byte) bool {
 	if id == webm.IdBlockGroup {
 		return c.ParseBlockGroup(value)
 	}
-
 
 	if id == webm.IdTags {
 		c.outputTagsOffset = c.writer.Offset()
@@ -548,19 +550,26 @@ func (c *DemuxerClient) tryWritingNextBlock() {
 
 	if videoBlock.IsKeyframe() &&
 		audioBlock1.IsKeyframe() &&
-		audioBlock1.timecode <= videoBlock.timecode &&
+		(audioBlock1.timecode <= videoBlock.timecode ||
+			(c.lastAudioTimecode != -1 && c.lastVideoTimecode != -1 &&
+				c.lastAudioTimecode <= c.lastVideoTimecode)) &&
 		audioBlock2.timecode > videoBlock.timecode &&
 		(audioBlock1.timecode-c.outputClusterTimecode) >= c.minClusterDuration {
 		// This is the situation where a new cluster is allowed.
+		// 1. audioBlock1 and videoBlock are both keyframes.
+		// 2. audioBlock1 covers videoBlock OR the last audioBlock written covers
+		//    the last videoBlock written as well as the current videoBlock.
 		c.startNewCluster(audioBlock1.id, audioBlock1.timecode)
 	}
 
 	if audioBlock1.timecode <= videoBlock.timecode {
 		c.writeBlock(audioBlock1)
+		c.lastAudioTimecode = audioBlock1.timecode
 		c.blocks[audioID] = audio[1:]
 		return
 	}
 	c.writeBlock(videoBlock)
+	c.lastVideoTimecode = videoBlock.timecode
 	c.blocks[videoID] = video[1:]
 }
 
@@ -697,6 +706,8 @@ func NewDemuxerClient(writer *ebml.Writer, minClusterDurationInMS int) *DemuxerC
 		outputCuesOffset:       -1,
 		outputClusterTimecode:  -1,
 		outputTagsOffset:       -1,
+		lastAudioTimecode:      -1,
+		lastVideoTimecode:      -1,
 	}
 }
 
