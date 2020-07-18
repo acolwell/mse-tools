@@ -75,31 +75,34 @@ type DemuxerClient struct {
 type Block struct {
 	id                  uint64
 	isSimple            bool
+	isKeyframe          bool
 	timecode            int64
 	flags               uint8
 	data                []byte
 	extraBlockGroupData []byte
 }
 
-func (b *Block) IsKeyframe() bool {
-	return (b.flags & 0x80) != 0
-}
-
-func NewBlock(id uint64, isSimple bool, timecode int64, flags uint8, data []byte,
+func NewBlock(id uint64, isSimple bool, isKeyframe bool, timecode int64, flags uint8, data []byte,
 	extraBlockGroupData []byte) *Block {
-	block := &Block{id: id, isSimple: isSimple, flags: flags, timecode: timecode, data: make([]byte, len(data)), extraBlockGroupData: make([]byte, len(extraBlockGroupData))}
+	block := &Block{id: id, isSimple: isSimple, isKeyframe: isKeyframe, flags: flags, timecode: timecode, data: make([]byte, len(data)), extraBlockGroupData: make([]byte, len(extraBlockGroupData))}
 	copy(block.data, data)
 	copy(block.extraBlockGroupData, extraBlockGroupData)
 	return block
 }
 
 type BlockGroupClient struct {
-	parsedBlock bool
-	id          uint64
-	rawTimecode int64
-	flags       uint8
-	blockData   []byte
-	writer      *ebml.Writer
+	parsedBlock          bool
+	parsedReferenceBlock bool
+	id                   uint64
+	rawTimecode          int64
+	flags                uint8
+	blockData            []byte
+	writer               *ebml.Writer
+}
+
+func NewBlockGroupClient(bw *ebml.BufferWriter) *BlockGroupClient {
+	bgc := &BlockGroupClient{parsedBlock: false, parsedReferenceBlock: false, writer: ebml.NewWriter(bw)}
+	return bgc
 }
 
 func (c *BlockGroupClient) OnListStart(offset int64, id int) bool {
@@ -120,7 +123,9 @@ func (c *BlockGroupClient) OnBinary(id int, value []byte) bool {
 		c.id = blockInfo.Id
 		c.rawTimecode = int64(blockInfo.Timecode)
 		c.flags = blockInfo.Flags & 0x0f
-		c.blockData = value[blockInfo.HeaderSize:]
+		blockData := value[blockInfo.HeaderSize:]
+		c.blockData = make([]byte, len(blockData))
+		copy(c.blockData, blockData)
 		c.parsedBlock = true
 		return true
 	} else if id == webm.IdBlockAdditions {
@@ -132,7 +137,11 @@ func (c *BlockGroupClient) OnBinary(id int, value []byte) bool {
 }
 
 func (c *BlockGroupClient) OnInt(id int, value int64) bool {
-	if id == webm.IdDiscardPadding || id == webm.IdReferenceBlock {
+	if id == webm.IdReferenceBlock {
+		c.parsedReferenceBlock = true
+		c.writer.Write(id, value)
+		return true
+	} else if id == webm.IdDiscardPadding {
 		c.writer.Write(id, value)
 		return true
 	}
@@ -462,7 +471,8 @@ func (c *DemuxerClient) ParseSimpleBlock(buf []byte) bool {
 		return false
 	}
 
-	c.blocks[id] = append(blockList, NewBlock(id, true, timecode, flags, buf[idSize+3:], []byte{}))
+	isKeyframe := (flags & 0x80) != 0
+	c.blocks[id] = append(blockList, NewBlock(id, true, isKeyframe, timecode, flags, buf[idSize+3:], []byte{}))
 
 	c.tryWritingNextBlock()
 	return true
@@ -482,7 +492,7 @@ func (c *DemuxerClient) ParseBlockGroup(buf []byte) bool {
 	}
 
 	bw := ebml.NewBufferWriter(len(buf))
-	bc := &BlockGroupClient{parsedBlock: false, writer: ebml.NewWriter(bw)}
+	bc := NewBlockGroupClient(bw)
 	p := ebml.NewParser(ebml.GetListIDs(typeInfo), webm.UnknownSizeInfo(),
 		ebml.NewElementParser(bc, typeInfo))
 
@@ -495,7 +505,7 @@ func (c *DemuxerClient) ParseBlockGroup(buf []byte) bool {
 	id := bc.id
 	rawTimecode := bc.rawTimecode
 	flags := bc.flags
-
+	isKeyframe := !bc.parsedReferenceBlock
 	timecode := c.clusterTimecode + rawTimecode
 
 	//log.Printf("in track %d %d 0x%x %d\n", id, timecode, flags, len(buf)-3-idSize)
@@ -509,7 +519,7 @@ func (c *DemuxerClient) ParseBlockGroup(buf []byte) bool {
 		return false
 	}
 
-	c.blocks[id] = append(blockList, NewBlock(id, false, timecode, flags, bc.blockData, bw.Bytes()))
+	c.blocks[id] = append(blockList, NewBlock(id, false, isKeyframe, timecode, flags, bc.blockData, bw.Bytes()))
 
 	c.tryWritingNextBlock()
 	return true
@@ -548,8 +558,8 @@ func (c *DemuxerClient) tryWritingNextBlock() {
 	audioBlock1 := audio[0]
 	audioBlock2 := audio[1]
 
-	if videoBlock.IsKeyframe() &&
-		audioBlock1.IsKeyframe() &&
+	if videoBlock.isKeyframe &&
+		audioBlock1.isKeyframe &&
 		(audioBlock1.timecode <= videoBlock.timecode ||
 			(c.lastAudioTimecode != -1 && c.lastVideoTimecode != -1 &&
 				c.lastAudioTimecode <= c.lastVideoTimecode)) &&
@@ -582,7 +592,7 @@ func (c *DemuxerClient) writeNextSingleStreamBlock(trackID uint64) {
 
 	block := blocks[0]
 	clusterDuration := block.timecode - c.outputClusterTimecode
-	if block.IsKeyframe() &&
+	if block.isKeyframe &&
 		clusterDuration >= c.minClusterDuration {
 		c.startNewCluster(block.id, block.timecode)
 	}
@@ -616,7 +626,7 @@ func (c *DemuxerClient) writeBlock(block *Block) {
 	}
 
 	if c.outputClusterTimecode == -1 {
-		if !block.IsKeyframe() {
+		if !block.isKeyframe {
 			panic("First block is not a keyframe!")
 		}
 		c.startNewCluster(block.id, block.timecode)
