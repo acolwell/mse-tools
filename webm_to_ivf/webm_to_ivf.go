@@ -16,11 +16,11 @@ package main
 
 import (
 	"bytes"
-	"golang.org/x/net/websocket"
 	"encoding/binary"
 	"fmt"
 	"github.com/acolwell/mse-tools/ebml"
 	"github.com/acolwell/mse-tools/webm"
+	"golang.org/x/net/websocket"
 	"io"
 	"net/url"
 	"os"
@@ -53,8 +53,8 @@ func (c *TestClient) WriteHeader() {
 	c.out.Seek(0, os.SEEK_SET)
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, uint32(0x444b4946)) // 'DKIF' magic
-	binary.Write(buf, binary.LittleEndian, uint16(0x0))        // version
-	binary.Write(buf, binary.LittleEndian, uint16(32))         // header length
+	binary.Write(buf, binary.LittleEndian, uint16(0x0))     // version
+	binary.Write(buf, binary.LittleEndian, uint16(32))      // header length
 	binary.Write(buf, binary.BigEndian, c.codec4cc)
 	binary.Write(buf, binary.LittleEndian, c.width)
 	binary.Write(buf, binary.LittleEndian, c.height)
@@ -86,7 +86,7 @@ func (c *TestClient) OnBinary(id int, value []byte) bool {
 		blockInfo := webm.ParseSimpleBlock(value)
 		presentationTimecode := int64(c.clusterTimecode) + int64(blockInfo.Timecode)
 		if blockInfo != nil {
-			frameData := value[blockInfo.HeaderSize:];
+			frameData := value[blockInfo.HeaderSize:]
 			fmt.Printf("frame size %d timestamp %d\n", len(frameData), presentationTimecode)
 			buf := new(bytes.Buffer)
 			binary.Write(buf, binary.LittleEndian, uint32(len(frameData)))
