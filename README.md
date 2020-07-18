@@ -2,7 +2,7 @@ mse-tools
 =========================================
 
 Go tools that simplify building applications for the 
-[Media Source Extensions](http://dvcs.w3.org/hg/html-media/raw-file/tip/media-source/media-source.html).
+[Media Source Extensions](https://w3c.github.io/media-source/).
 
 ## Go Command-line Tools
 ### Tools
